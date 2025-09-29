@@ -3,24 +3,47 @@ name: governance
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - 'tickets/**'
+      - 'docs/**'
+      - 'artefacts/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+
+concurrency:
+  group: governance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   run-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Prettier
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Prettier (check)
+        id: prettier
+        continue-on-error: true
         run: npx --yes prettier --check .
-      - name: Markdownlint
+
+      - name: Prettier (write & commit)
+        if: steps.prettier.outcome == 'failure'
         run: |
-          if [ -f .markdownlint.yml ]; then
-            npx --yes markdownlint "**/*.md" -c .markdownlint.yml -d
-          else
-            echo "No .markdownlint.yml, skipping."
-          fi
+          npx --yes prettier --write .
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(prettier): auto-format via CI" || echo "nothing to commit"
+          git push origin HEAD:${{ github.head_ref }}
+
+      - name: Prettier (re-check)
+        run: npx --yes prettier --check .
 
   run-utf8:
     runs-on: ubuntu-latest
@@ -28,14 +51,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        with: { node-version: 20 }
       - name: UTF-8 / BOM / spacing
         run: node scripts/check-utf8.mjs --root .
 
-  collect-changed:
+  validate-all:
     runs-on: ubuntu-latest
     needs: run-utf8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Validate all tickets (non-strict)
+        run: node scripts/validate-ticket.mjs
+
+  collect-changed:
+    runs-on: ubuntu-latest
+    needs: validate-all
     outputs:
       tickets: ${{ steps.set.outputs.tickets }}
     steps:
@@ -48,17 +80,6 @@ jobs:
           CHANGED=$(git diff --name-only origin/$BASE...${{ github.sha }} | grep -E '^tickets/AT-[0-9]+\.md$' || true)
           echo "tickets=$(printf '%s\n' "$CHANGED" | jq -R -s 'split("\n")|map(select(length>0))')" >> "$GITHUB_OUTPUT"
 
-  validate-all:
-    runs-on: ubuntu-latest
-    needs: collect-changed
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Validate all tickets (non-strict)
-        run: node scripts/validate-ticket.mjs
-
   validate-changed:
     runs-on: ubuntu-latest
     needs: collect-changed
@@ -69,7 +90,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        with: { node-version: 20 }
       - name: Validate changed ticket (strict)
         run: node scripts/validate-ticket.mjs --strict --file "${{ matrix.file }}"
