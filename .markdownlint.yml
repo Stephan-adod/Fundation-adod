@@ -1,0 +1,9 @@
+default: true
+MD041: { level: error }
+MD012: { level: error }
+MD009: { level: warning }
+MD010: { level: warning }
+MD022: { level: warning }
+MD025: { level: warning }
+MD031: { level: warning }
+MD032: { level: warning }
