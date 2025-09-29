@@ -1,0 +1,21 @@
+name: iteration-log-guard
+on:
+  pull_request:
+    paths:
+      - "artefacts/iteration_log.md"
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Ensure append-only
+        shell: bash
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.sha }}"
+          diff=$(git diff --unified=0 "$base" "$head" -- artefacts/iteration_log.md || true)
+          echo "$diff"
+          # verbiete echte Löschungen/Modifikationen (Zeilen, die mit '-' beginnen, aber nicht '--')
+          echo "$diff" | grep -E "^\-[^-]" && { echo "❌ iteration_log: nur Append erlaubt"; exit 1; } || true
+          echo "✅ iteration_log append-only guard passed"
