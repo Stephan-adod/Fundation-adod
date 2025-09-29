@@ -1,0 +1,28 @@
+name: docs-lite
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - ".markdownlint.yml"
+      - ".gitattributes"
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm i -g markdownlint-cli prettier
+      - name: Normalize & fix markdown
+        run: |
+          node tools/fix-md.mjs || true
+          prettier --write "**/*.md" || true
+          markdownlint "**/*.md" -c .markdownlint.yml --fix || true
+      - name: Auto-commit fixes (if any)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: auto-fix markdown (docs-lite)"
