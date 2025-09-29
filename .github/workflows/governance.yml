@@ -5,13 +5,31 @@ on:
     branches: [main]
 
 jobs:
-  setup-node:
+  validate-tickets:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        with: { node-version: 20 }
+      # Liste geänderter Ticket-Dateien (gegen base branch)
+      - name: Get changed tickets
+        id: diff
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.sha }} | grep -E '^tickets/AT-[0-9]+\.md$' || true)
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
 
+      # Non-strict für alle Tickets (Bestandsvalidierung)
+      - name: Validate all tickets (non-strict)
+        run: node scripts/validate-ticket.mjs
+
+      # Strict nur für geänderte Tickets
+      - name: Validate changed tickets (strict)
+        if: ${{ steps.diff.outputs.changed != '' }}
+        run: |
+          for f in ${{ steps.diff.outputs.changed }}; do
+            node scripts/validate-ticket.mjs --strict --file "$f"
+          done
+          
   run-checks:
     runs-on: ubuntu-latest
     needs: setup-node
