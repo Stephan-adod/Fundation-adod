@@ -1,21 +1,21 @@
-import fs from 'fs/promises';
-import path from 'path';
-import process from 'process';
+import fs from "fs/promises";
+import path from "path";
+import process from "process";
 
-const decoder = new TextDecoder('utf-8', { fatal: true });
+const decoder = new TextDecoder("utf-8", { fatal: true });
 
 function parseArgs(argv) {
-  let root = '.';
+  let root = ".";
   let fix = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--root') {
+    if (arg === "--root") {
       if (i + 1 >= argv.length) {
-        throw new Error('Missing value for --root');
+        throw new Error("Missing value for --root");
       }
       root = argv[i + 1];
       i += 1;
-    } else if (arg === '--fix') {
+    } else if (arg === "--fix") {
       fix = true;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -31,12 +31,12 @@ async function collectMarkdownFiles(dir) {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === '.git' || entry.name === 'node_modules') {
+      if (entry.name === ".git" || entry.name === "node_modules") {
         continue;
       }
       const nested = await collectMarkdownFiles(fullPath);
       files.push(...nested);
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
       files.push(fullPath);
     }
   }
@@ -49,13 +49,17 @@ function analyzeBuffer(buffer) {
   try {
     text = decoder.decode(buffer);
   } catch (error) {
-    issues.push({ type: 'encoding', message: 'is not valid UTF-8' });
-    return { issues, fixable: false, text: '' };
+    issues.push({ type: "encoding", message: "is not valid UTF-8" });
+    return { issues, fixable: false, text: "" };
   }
 
-  const hasBom = buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
+  const hasBom =
+    buffer.length >= 3 &&
+    buffer[0] === 0xef &&
+    buffer[1] === 0xbb &&
+    buffer[2] === 0xbf;
   if (hasBom) {
-    issues.push({ type: 'bom', message: 'contains UTF-8 BOM' });
+    issues.push({ type: "bom", message: "contains UTF-8 BOM" });
   }
   if (text.charCodeAt(0) === 0xfeff) {
     text = text.slice(1);
@@ -71,9 +75,9 @@ function analyzeText(text) {
   const issues = [];
   const trailingLines = [];
   const consecutiveBlankLines = [];
-  const endsWithNewline = text.endsWith('\n');
+  const endsWithNewline = text.endsWith("\n");
 
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   if (endsWithNewline) {
     lines.pop();
   }
@@ -81,13 +85,13 @@ function analyzeText(text) {
   let blankRun = 0;
   for (let index = 0; index < lines.length; index += 1) {
     let line = lines[index];
-    if (line.endsWith('\r')) {
+    if (line.endsWith("\r")) {
       line = line.slice(0, -1);
     }
     if (/[ \t]+$/.test(line)) {
       trailingLines.push(index + 1);
     }
-    const isBlank = line.trim() === '';
+    const isBlank = line.trim() === "";
     if (isBlank) {
       blankRun += 1;
       if (blankRun > 1) {
@@ -100,18 +104,18 @@ function analyzeText(text) {
 
   if (trailingLines.length > 0) {
     issues.push({
-      type: 'trailing-spaces',
+      type: "trailing-spaces",
       message: `trailing spaces on lines ${formatLineList(trailingLines)}`,
     });
   }
   if (consecutiveBlankLines.length > 0) {
     issues.push({
-      type: 'blank-lines',
+      type: "blank-lines",
       message: `multiple consecutive blank lines around line ${consecutiveBlankLines[0]}`,
     });
   }
   if (text.length > 0 && !endsWithNewline) {
-    issues.push({ type: 'final-newline', message: 'missing final newline' });
+    issues.push({ type: "final-newline", message: "missing final newline" });
   }
 
   return { issues };
@@ -119,7 +123,7 @@ function analyzeText(text) {
 
 function formatLineList(lines) {
   if (lines.length <= 5) {
-    return lines.join(', ');
+    return lines.join(", ");
   }
   return `${lines[0]}, ${lines[1]}, …, ${lines[lines.length - 1]}`;
 }
@@ -128,12 +132,12 @@ function applyFixes(text) {
   if (text.charCodeAt(0) === 0xfeff) {
     text = text.slice(1);
   }
-  if (text === '') {
-    return '';
+  if (text === "") {
+    return "";
   }
 
   const segments = text.split(/\r?\n/);
-  const endsWithNewline = text.endsWith('\n');
+  const endsWithNewline = text.endsWith("\n");
   if (endsWithNewline) {
     segments.pop();
   }
@@ -141,14 +145,14 @@ function applyFixes(text) {
   const fixedLines = [];
   let blankRun = 0;
   for (let segment of segments) {
-    if (segment.endsWith('\r')) {
+    if (segment.endsWith("\r")) {
       segment = segment.slice(0, -1);
     }
-    const withoutTrailing = segment.replace(/[ \t]+$/g, '');
-    const isBlank = withoutTrailing.trim() === '';
+    const withoutTrailing = segment.replace(/[ \t]+$/g, "");
+    const isBlank = withoutTrailing.trim() === "";
     if (isBlank) {
       if (blankRun === 0) {
-        fixedLines.push('');
+        fixedLines.push("");
       }
       blankRun += 1;
     } else {
@@ -157,17 +161,17 @@ function applyFixes(text) {
     }
   }
 
-  const normalized = fixedLines.join('\n');
+  const normalized = fixedLines.join("\n");
   const shouldEndWithNewline = text.length > 0 || endsWithNewline;
-  if (normalized === '') {
-    return shouldEndWithNewline ? '\n' : '';
+  if (normalized === "") {
+    return shouldEndWithNewline ? "\n" : "";
   }
   return shouldEndWithNewline ? `${normalized}\n` : normalized;
 }
 
 function displayPath(file, root) {
   const relativeToCwd = path.relative(process.cwd(), file);
-  if (!relativeToCwd.startsWith('..')) {
+  if (!relativeToCwd.startsWith("..")) {
     return relativeToCwd || path.basename(file);
   }
   const relativeToRoot = path.relative(root, file);
@@ -210,8 +214,8 @@ async function main() {
 
     if (options.fix && issues.length > 0 && analysis.fixable) {
       const fixedContent = applyFixes(analysis.text);
-      await fs.writeFile(file, fixedContent, 'utf8');
-      const verification = analyzeBuffer(Buffer.from(fixedContent, 'utf8'));
+      await fs.writeFile(file, fixedContent, "utf8");
+      const verification = analyzeBuffer(Buffer.from(fixedContent, "utf8"));
       if (verification.issues.length === 0) {
         issues = [];
         console.log(`Fixed ${displayPath(file, root)}`);
@@ -227,7 +231,7 @@ async function main() {
 
   if (violations.length > 0) {
     for (const { file, issues } of violations) {
-      const message = issues.map((issue) => issue.message).join('; ');
+      const message = issues.map((issue) => issue.message).join("; ");
       console.error(`${displayPath(file, root)}: ${message}`);
     }
     process.exitCode = 1;

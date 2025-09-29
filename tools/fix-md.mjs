@@ -23,16 +23,23 @@ for (const file of files) {
   const lines = txt.split("\n");
 
   // sichere H1 (MD041): erste nicht-leere Zeile beginnt mit "# "
-  let i = 0; while (i < lines.length && lines[i].trim() === "") i++;
+  let i = 0;
+  while (i < lines.length && lines[i].trim() === "") i++;
   const first = lines[i] ?? "";
   if (!first.startsWith("# ")) {
-    const base = path.basename(file).replace(/[_-]+/g, " ").replace(/\.md$/i, "");
+    const base = path
+      .basename(file)
+      .replace(/[_-]+/g, " ")
+      .replace(/\.md$/i, "");
     const title = base.charAt(0).toUpperCase() + base.slice(1);
     lines.splice(i, 0, `# ${title}`);
   }
 
   // max. eine Leerzeile (MD012), trailing spaces
-  let out = lines.join("\n").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+$/gm, "");
+  let out = lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+$/gm, "");
   if (out !== original) {
     fs.writeFileSync(file, out, "utf8");
     console.log("fixed:", file);
