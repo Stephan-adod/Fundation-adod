@@ -5,31 +5,48 @@ on:
       - "**/*.md"
       - ".markdownlint.yml"
       - ".gitattributes"
+
 jobs:
   docs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+
+    env:
+      # Branch-Name, in den wir zurückpushen (PR-Branch bei pull_request)
+      TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - name: Checkout PR branch (not detached)
+        uses: actions/checkout@v4
+        with:
+          # wichtig: auf den PR-Branch auschecken, nicht auf einen detached HEAD
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
       - uses: actions/setup-node@v4
-        with: { node-version: "20" }
+        with:
+          node-version: "20"
+
       - run: npm i -g markdownlint-cli prettier
+
       - name: Normalize & fix markdown
         run: |
-          node tools/fix-md.mjs || true
+          # optional, falls vorhanden
+          [ -f tools/fix-md.mjs ] && node tools/fix-md.mjs || true
           prettier --write "**/*.md" || true
           markdownlint "**/*.md" -c .markdownlint.yml --fix || true
-      - name: Commit markdown fixes (if any)
+
+      - name: Commit markdown fixes (if any) and push to PR branch
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if ! git diff --cached --quiet; then
             git commit -m "docs: auto-fix markdown (docs-lite)"
-            git push
+            # Bei pull_request sind wir auf dem PR-Branch; trotzdem explizit pushen:
+            git push origin HEAD:${TARGET_BRANCH}
           else
             echo "No markdown fixes to commit"
           fi
