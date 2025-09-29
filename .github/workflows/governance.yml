@@ -1,0 +1,53 @@
+name: governance
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  setup-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+  run-checks:
+    runs-on: ubuntu-latest
+    needs: setup-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prettier
+        run: npx --yes prettier --check .
+      - name: Markdownlint
+        run: |
+          if [ -x node_modules/.bin/markdownlint ]; then
+            npx markdownlint "**/*.md" -c .markdownlint.yml
+          elif command -v markdownlint >/dev/null 2>&1; then
+            markdownlint "**/*.md" -c .markdownlint.yml
+          else
+            echo "markdownlint not installed, skipping."
+          fi
+
+  run-utf8:
+    runs-on: ubuntu-latest
+    needs: setup-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/check-utf8.mjs --root .
+
+  validate-tickets:
+    runs-on: ubuntu-latest
+    needs: setup-node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/validate-ticket.mjs --strict
