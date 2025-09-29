@@ -2,37 +2,11 @@ name: governance
 
 on:
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  validate-tickets:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 20 }
-      # Liste geänderter Ticket-Dateien (gegen base branch)
-      - name: Get changed tickets
-        id: diff
-        run: |
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...${{ github.sha }} | grep -E '^tickets/AT-[0-9]+\.md$' || true)
-          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
-
-      # Non-strict für alle Tickets (Bestandsvalidierung)
-      - name: Validate all tickets (non-strict)
-        run: node scripts/validate-ticket.mjs
-
-      # Strict nur für geänderte Tickets
-      - name: Validate changed tickets (strict)
-        if: ${{ steps.diff.outputs.changed != '' }}
-        run: |
-          for f in ${{ steps.diff.outputs.changed }}; do
-            node scripts/validate-ticket.mjs --strict --file "$f"
-          done
-          
   run-checks:
     runs-on: ubuntu-latest
-    needs: setup-node
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,30 +16,60 @@ jobs:
         run: npx --yes prettier --check .
       - name: Markdownlint
         run: |
-          if [ -x node_modules/.bin/markdownlint ]; then
-            npx markdownlint "**/*.md" -c .markdownlint.yml
-          elif command -v markdownlint >/dev/null 2>&1; then
-            markdownlint "**/*.md" -c .markdownlint.yml
+          if [ -f .markdownlint.yml ]; then
+            npx --yes markdownlint "**/*.md" -c .markdownlint.yml -d
           else
-            echo "markdownlint not installed, skipping."
+            echo "No .markdownlint.yml, skipping."
           fi
 
   run-utf8:
     runs-on: ubuntu-latest
-    needs: setup-node
+    needs: run-checks
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node scripts/check-utf8.mjs --root .
+      - name: UTF-8 / BOM / spacing
+        run: node scripts/check-utf8.mjs --root .
 
-  validate-tickets:
+  collect-changed:
     runs-on: ubuntu-latest
-    needs: setup-node
+    needs: run-utf8
+    outputs:
+      tickets: ${{ steps.set.outputs.tickets }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect changed tickets
+        id: set
+        shell: bash
+        run: |
+          BASE=${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/$BASE...${{ github.sha }} | grep -E '^tickets/AT-[0-9]+\.md$' || true)
+          echo "tickets=$(printf '%s\n' "$CHANGED" | jq -R -s 'split("\n")|map(select(length>0))')" >> "$GITHUB_OUTPUT"
+
+  validate-all:
+    runs-on: ubuntu-latest
+    needs: collect-changed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node scripts/validate-ticket.mjs --strict
+      - name: Validate all tickets (non-strict)
+        run: node scripts/validate-ticket.mjs
+
+  validate-changed:
+    runs-on: ubuntu-latest
+    needs: collect-changed
+    if: ${{ fromJson(needs.collect-changed.outputs.tickets).length > 0 }}
+    strategy:
+      matrix:
+        file: ${{ fromJson(needs.collect-changed.outputs.tickets) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate changed ticket (strict)
+        run: node scripts/validate-ticket.mjs --strict --file "${{ matrix.file }}"

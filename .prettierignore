@@ -1,0 +1,2 @@
+# CI/Workflows nicht auto-formatieren
+.github/workflows/**

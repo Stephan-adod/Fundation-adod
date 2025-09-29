@@ -68,7 +68,13 @@ function getLogFilePath(ticket) {
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const baseDir = path.resolve(__dirname, "..", "artefacts", "loop_logs", `${year}-${month}`);
+  const baseDir = path.resolve(
+    __dirname,
+    "..",
+    "artefacts",
+    "loop_logs",
+    `${year}-${month}`,
+  );
   ensureDirectory(baseDir);
   return path.join(baseDir, `${ticket}.jsonl`);
 }
@@ -100,7 +106,9 @@ function main() {
     const logPath = getLogFilePath(flags.ticket);
     const entry = buildLogEntry(flags);
     appendLog(logPath, entry);
-    console.log(`Log entry appended to ${path.relative(process.cwd(), logPath)}`);
+    console.log(
+      `Log entry appended to ${path.relative(process.cwd(), logPath)}`,
+    );
   } catch (error) {
     console.error(error.message);
     process.exit(1);
