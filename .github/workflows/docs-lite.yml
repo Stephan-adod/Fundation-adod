@@ -22,7 +22,14 @@ jobs:
           node tools/fix-md.mjs || true
           prettier --write "**/*.md" || true
           markdownlint "**/*.md" -c .markdownlint.yml --fix || true
-      - name: Auto-commit fixes (if any)
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "docs: auto-fix markdown (docs-lite)"
+      - name: Commit markdown fixes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: auto-fix markdown (docs-lite)"
+            git push
+          else
+            echo "No markdown fixes to commit"
+          fi
