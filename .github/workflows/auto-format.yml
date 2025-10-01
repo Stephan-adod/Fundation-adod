@@ -3,13 +3,28 @@ name: auto-format
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - '**/*.md'
+      - '**/*.json'
+      - '**/*.yml'
+      - '**/*.yaml'
+      - 'scripts/**'
+      - '.prettierignore'
+      - '.editorconfig'
+
+concurrency:
+  group: auto-format-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   format:
     runs-on: ubuntu-latest
+    env:
+      MAX_AUTOFIX_COMMITS: 2
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,11 +32,40 @@ jobs:
           persist-credentials: true
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - name: Prettier write
-        run: npx --yes prettier --write .
-      - name: Commit & push formatted files
+
+      - name: Prettier (check)
+        id: chk
+        continue-on-error: true
+        run: npx --yes prettier --check .
+
+      - name: Count previous bot commits
+        id: count
         run: |
+          N=$(git log --pretty="%an|%s" -n 10 | grep -c "github-actions\[bot].*auto-format")
+          echo "n=$N" >> $GITHUB_OUTPUT
+
+      - name: Prettier (write & commit)
+        if: steps.chk.outcome == 'failure' && steps.count.outputs.n < env.MAX_AUTOFIX_COMMITS
+        run: |
+          npx --yes prettier --write .
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore(prettier): auto-format via CI" || echo "nothing to commit"
+          git commit -am "chore(auto-format): prettier" || echo "nothing to commit"
           git push origin HEAD:${{ github.head_ref }}
+
+      - name: Prettier (re-check)
+        continue-on-error: true
+        run: npx --yes prettier --check .
+
+      - name: Metrics (auto-format)
+        if: always()
+        run: node scripts/ci-metrics.mjs auto-format ${{ job.status }}
+        continue-on-error: true
+
+      - name: Job summary
+        if: always()
+        run: |
+          echo "### Auto-format" >> $GITHUB_STEP_SUMMARY
+          echo "- Initial check: **${{ steps.chk.outcome }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Bot commits recently: **${{ steps.count.outputs.n }}** / max $MAX_AUTOFIX_COMMITS" >> $GITHUB_STEP_SUMMARY
+          echo "- Note: Workflow ist **nicht-blockierend**" >> $GITHUB_STEP_SUMMARY

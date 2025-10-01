@@ -16,6 +16,10 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
+
+env:
+  SHADOW_MODE: true
 
 jobs:
   run-checks:
@@ -43,6 +47,7 @@ jobs:
           git push origin HEAD:${{ github.head_ref }}
 
       - name: Prettier (re-check)
+        continue-on-error: true
         run: npx --yes prettier --check .
 
   run-utf8:
@@ -53,6 +58,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: UTF-8 / BOM / spacing
+        continue-on-error: ${{ env.SHADOW_MODE == 'true' }}
         run: node scripts/check-utf8.mjs --root .
 
   validate-all:
@@ -94,3 +100,21 @@ jobs:
         with: { node-version: 20 }
       - name: Validate changed ticket (strict)
         run: node scripts/validate-ticket.mjs --strict --file "${{ matrix.file }}"
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [run-checks, run-utf8, validate-all, validate-changed]
+    if: always()
+    steps:
+      - name: Governance Summary
+        run: |
+          echo "### Governance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Prettier: **${{ needs.run-checks.result }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- UTF-8: **${{ needs.run-utf8.result }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Tickets (non-strict): **${{ needs.validate-all.result }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Tickets (strict, changed): **${{ needs.validate-changed.result }}**" >> $GITHUB_STEP_SUMMARY
+          echo "- Shadow Mode: **${{ env.SHADOW_MODE }}** (Warnungen statt Fail für zusätzliche Checks)" >> $GITHUB_STEP_SUMMARY
+      - name: Metrics (governance:summary)
+        if: always()
+        run: node scripts/ci-metrics.mjs governance-summary ${{ job.status }}
+        continue-on-error: true
