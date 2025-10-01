@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Vor der Umsetzung sicherstellen, dass Tickets klar, konsistent und wertvoll sind.  
+Vor der Umsetzung sicherstellen, dass Tickets klar, konsistent und wertvoll sind.
 Refinement reduziert Rework und verhindert vorschnelle Umsetzung.
 
 ## Input
