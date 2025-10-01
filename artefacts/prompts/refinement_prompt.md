@@ -4,8 +4,8 @@
 
 ## Zweck
 
-Dieser Prompt unterstützt den **Refinement Loop**:  
-Bevor ein Ticket (AT-XXX.md) umgesetzt wird, wird es kritisch geprüft.  
+Dieser Prompt unterstützt den **Refinement Loop**:
+Bevor ein Ticket (AT-XXX.md) umgesetzt wird, wird es kritisch geprüft.
 Ziel: Klarheit schaffen, Deliverables und DoR/DoD schärfen, Operator-Friktion vermeiden.
 
 ---
