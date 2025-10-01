@@ -1,0 +1,4 @@
+Prompt-Provenance: prompts/meta_prompt@1.0.0
+Commit: <GIT_SHA>
+Inputs: execution_prompt.md vX.Y
+Notes: Beispiel-Artefakt für AT-002 DoD-Evidence.
