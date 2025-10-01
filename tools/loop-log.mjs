@@ -178,12 +178,11 @@ function main() {
       summary: args.summary,
     });
     const filePath = writeLogFile({ ticket, runId, body });
-    console.log("loop-log written:", filePath);
-    process.exit(0);
+    console.log("loop-log:", filePath);
   } catch (error) {
-    console.error("loop-log failed:", error.message);
-    process.exit(0);
+    console.log("non-blocking:", error?.message || error);
   }
+  process.exit(0);
 }
 
 main();

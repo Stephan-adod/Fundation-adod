@@ -128,12 +128,10 @@ jobs:
           END_TS=$(date +%s)
           DUR=$(( END_TS - ${START_TS:-END_TS} ))
           node scripts/ci-metrics.mjs governance-summary ${{ job.status }} --duration $DUR --rate ${RATE_PER_MIN:-0}
-        continue-on-error: true
-
-      - name: Persist metrics (commit if changed)
-        if: always()
-        run: node scripts/commit-if-changed.mjs
-        continue-on-error: true
       - name: Loop Log (non-blocking)
         if: always()
         run: node tools/loop-log.mjs --ticket-from-branch --summary "$GITHUB_STEP_SUMMARY" || true
+      - name: Persist metrics/logs if changed
+        if: always()
+        run: node scripts/commit-if-changed.mjs
+        continue-on-error: true
