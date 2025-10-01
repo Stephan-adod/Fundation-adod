@@ -1,5 +1,16 @@
+- name: Count previous bot commits
+  id: count
+  shell: bash
+  run: |
+    # hole etwas mehr History (sicher für PR-Branches)
+    git fetch --depth=50 origin "${{ github.head_ref }}" || true
+    # zähle Bot-Commits zum Thema auto-format/prettier, ohne am "kein Treffer"-Fall zu sterben
+    N=$(git log -n 50 --pretty='%an|%s' |
+        grep -E 'github-actions\[bot]\|.*(auto-format|prettier)' |
+        wc -l)
+    echo "n=$N" >> "$GITHUB_OUTPUT"
 - name: Persist metrics (commit JSONL)
-  if: always() && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+  if: always() && github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && steps.count.outputs.n == '0'
   run: |
     git config user.name  "github-actions[bot]"
     git config user.email "github-actions[bot]@users.noreply.github.com"
