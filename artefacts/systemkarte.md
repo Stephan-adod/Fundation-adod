@@ -140,6 +140,25 @@
 
 ---
 
+### 🔹 Refinement Loop
+
+**Purpose:** Vor der Umsetzung Tickets schärfen, DoR/DoD prüfen, Abhängigkeiten klären.
+
+- **Artefakte**
+  - Ticket-Dateien (AT-XXX.md)
+  - Loop-Log Einträge (Refinement-Review)
+
+- **Tickets/Patches**
+  - AT-PATCH-12 (Refinement Loop Einführung)
+  - Pilot: AT-PATCH-11 (Green-Rate Hardening & Shadow Mode)
+
+- **KPIs**
+  - 100 % Tickets durchlaufen Refinement.
+  - Operator-Rework-Zeit <10 %.
+  - ≥80 % Tickets bestehen Refinement ohne Nachbearbeitung.
+
+---
+
 ## Nächste Schritte
 
 - **Loop-Dokumente (`artefacts/loops/*_Loop.md`)** aktualisieren:
