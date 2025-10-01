@@ -2,187 +2,72 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const ARG_SUMMARY = "--summary";
-const ARG_TICKET = "--ticket";
-const ARG_TICKET_INLINE = "--ticket=";
-const ARG_SUMMARY_INLINE = "--summary=";
-const ARG_TICKET_FROM_BRANCH = "--ticket-from-branch";
+const args = process.argv.slice(2);
+let summary = "";
+let explicitTicket = null;
+let ticketFromBranch = false;
 
-function parseArgs(argv) {
-  const result = {
-    summary: "",
-    ticket: null,
-    ticketFromBranch: false,
-  };
-
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === ARG_SUMMARY) {
-      const next = argv[i + 1];
-      if (next !== undefined) {
-        result.summary = next;
-        i += 1;
-      } else {
-        result.summary = "";
-      }
-      continue;
-    }
-
-    if (arg.startsWith(ARG_SUMMARY_INLINE)) {
-      result.summary = arg.slice(ARG_SUMMARY_INLINE.length);
-      continue;
-    }
-
-    if (arg === ARG_TICKET) {
-      const next = argv[i + 1];
-      if (next !== undefined) {
-        result.ticket = next.toUpperCase();
-        i += 1;
-      }
-      continue;
-    }
-
-    if (arg.startsWith(ARG_TICKET_INLINE)) {
-      result.ticket = arg.slice(ARG_TICKET_INLINE.length).toUpperCase();
-      continue;
-    }
-
-    if (arg === ARG_TICKET_FROM_BRANCH) {
-      result.ticketFromBranch = true;
-      continue;
-    }
-  }
-
-  return result;
+function extractTicket(str) {
+  if (!str) return null;
+  const m = String(str).match(/(AT-(?:PATCH-)?\d+)/i);
+  return m ? m[1].toUpperCase() : null;
 }
 
-function extractTicket(value) {
-  if (typeof value !== "string" || !value) {
-    return null;
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--summary") {
+    summary = args[++i] || "";
+  } else if (args[i] === "--ticket" && args[i + 1]) {
+    explicitTicket = args[++i].toUpperCase();
+  } else if (args[i] === "--ticket-from-branch") {
+    ticketFromBranch = true;
   }
-  const match = value.match(/\b(AT-(?:PATCH-)?\d+)\b/i);
-  return match ? match[1].toUpperCase() : null;
 }
 
-function getTicketFromEnvBranch() {
-  const envCandidates = [
-    process.env.GITHUB_HEAD_REF,
-    process.env.GITHUB_REF_NAME,
-  ];
+let detectedTicket = null;
+if (ticketFromBranch) {
+  const branchCand =
+    process.env.GITHUB_HEAD_REF ||
+    process.env.GITHUB_REF_NAME ||
+    process.env.GITHUB_REF ||
+    "";
+  detectedTicket = extractTicket(branchCand);
 
-  if (process.env.GITHUB_REF) {
-    const parts = process.env.GITHUB_REF.split("/");
-    envCandidates.push(parts[parts.length - 1]);
+  if (!detectedTicket && process.env.GITHUB_EVENT_PATH && fs.existsSync(process.env.GITHUB_EVENT_PATH)) {
+    try {
+      const ev = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+      const title = ev?.pull_request?.title || ev?.issue?.title || "";
+      detectedTicket = extractTicket(title) || detectedTicket;
+    } catch {}
   }
-
-  for (const candidate of envCandidates) {
-    const ticket = extractTicket(candidate);
-    if (ticket) {
-      return ticket;
-    }
-  }
-
-  const title = getTicketFromPrTitle();
-  return extractTicket(title);
 }
 
-function getTicketFromPrTitle() {
-  const titleEnvOrder = [
-    "GITHUB_PR_TITLE",
-    "PR_TITLE",
-    "PULL_REQUEST_TITLE",
-    "GITHUB_EVENT_PULL_REQUEST_TITLE",
-    "GH_PR_TITLE",
-  ];
+const ticket = explicitTicket || detectedTicket;
+const runId = process.env.GITHUB_RUN_ID || String(Date.now());
+const logDir = path.join("artefacts", "loop_logs");
+fs.mkdirSync(logDir, { recursive: true });
 
-  for (const name of titleEnvOrder) {
-    const value = process.env[name];
-    if (typeof value === "string" && value) {
-      return value;
-    }
-  }
+const filename = `${ticket || "_unknown"}_${runId}.md`;
+const file = path.join(logDir, filename);
+const now = new Date().toISOString();
 
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (!eventPath) {
-    return null;
-  }
+const body = [
+  "# Loop Log",
+  "",
+  `- ts: ${now}`,
+  `- run_id: ${runId}`,
+  `- ticket: ${ticket || "unknown"}`,
+  `- workflow: ${process.env.GITHUB_WORKFLOW || "local"}`,
+  "",
+  "## Summary",
+  summary || "(none)",
+  "",
+].join("\n");
 
-  try {
-    const raw = fs.readFileSync(eventPath, "utf8");
-    const payload = JSON.parse(raw);
-    if (
-      payload &&
-      typeof payload === "object" &&
-      payload.pull_request &&
-      typeof payload.pull_request.title === "string"
-    ) {
-      return payload.pull_request.title;
-    }
-    if (
-      payload &&
-      typeof payload === "object" &&
-      payload.issue &&
-      typeof payload.issue.title === "string"
-    ) {
-      return payload.issue.title;
-    }
-  } catch (error) {
-    // ignore errors when reading/parsing event payload
-  }
-
-  return null;
-}
-
-function ensureDirectory(dirPath) {
-  fs.mkdirSync(dirPath, { recursive: true });
-}
-
-function buildLogBody({ runId, ticket, summary }) {
-  const now = new Date().toISOString();
-  return [
-    "# Loop Log",
-    "",
-    `- ts: ${now}`,
-    `- run_id: ${runId}`,
-    `- ticket: ${ticket || "unknown"}`,
-    `- workflow: ${process.env.GITHUB_WORKFLOW || "local"}`,
-    "",
-    "## Summary",
-    summary ? summary : "(none)",
-    "",
-  ].join("\n");
-}
-
-function writeLogFile({ ticket, runId, body }) {
-  const dir = path.join("artefacts", "loop_logs");
-  ensureDirectory(dir);
-  const ticketSegment = ticket || "_unknown";
-  const fileName = `${ticketSegment}_${runId}.md`;
-  const filePath = path.join(dir, fileName);
-  fs.writeFileSync(filePath, body, "utf8");
-  return filePath;
-}
-
-function main() {
-  try {
-    const args = parseArgs(process.argv.slice(2));
-    let ticket = args.ticket;
-    if (!ticket && args.ticketFromBranch) {
-      ticket = getTicketFromEnvBranch();
-    }
-
-    const runId = process.env.GITHUB_RUN_ID || String(Date.now());
-    const body = buildLogBody({
-      runId,
-      ticket,
-      summary: args.summary,
-    });
-    const filePath = writeLogFile({ ticket, runId, body });
-    console.log("loop-log:", filePath);
-  } catch (error) {
-    console.log("non-blocking:", error?.message || error);
-  }
+try {
+  fs.writeFileSync(file, body, "utf8");
+  console.log("loop-log:", file);
+  process.exit(0);
+} catch (e) {
+  console.log("non-blocking:", e.message);
   process.exit(0);
 }
-
-main();
