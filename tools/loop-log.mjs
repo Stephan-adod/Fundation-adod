@@ -1,117 +1,188 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const ARG_SUMMARY = "--summary";
+const ARG_TICKET = "--ticket";
+const ARG_TICKET_INLINE = "--ticket=";
+const ARG_SUMMARY_INLINE = "--summary=";
+const ARG_TICKET_FROM_BRANCH = "--ticket-from-branch";
 
 function parseArgs(argv) {
-  const flags = {};
+  const result = {
+    summary: "",
+    ticket: null,
+    ticketFromBranch: false,
+  };
+
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (!arg.startsWith("--")) {
-      throw new Error(`Unknown argument: ${arg}`);
-    }
-    const [rawKey, inlineValue] = arg.split("=", 2);
-    const key = rawKey.slice(2);
-    if (!key) {
-      throw new Error("Empty flag detected");
-    }
-    if (inlineValue !== undefined) {
-      flags[key] = inlineValue;
+    if (arg === ARG_SUMMARY) {
+      const next = argv[i + 1];
+      if (next !== undefined) {
+        result.summary = next;
+        i += 1;
+      } else {
+        result.summary = "";
+      }
       continue;
     }
-    const next = argv[i + 1];
-    if (next === undefined || next.startsWith("--")) {
-      throw new Error(`Missing value for flag --${key}`);
+
+    if (arg.startsWith(ARG_SUMMARY_INLINE)) {
+      result.summary = arg.slice(ARG_SUMMARY_INLINE.length);
+      continue;
     }
-    flags[key] = next;
-    i += 1;
+
+    if (arg === ARG_TICKET) {
+      const next = argv[i + 1];
+      if (next !== undefined) {
+        result.ticket = next.toUpperCase();
+        i += 1;
+      }
+      continue;
+    }
+
+    if (arg.startsWith(ARG_TICKET_INLINE)) {
+      result.ticket = arg.slice(ARG_TICKET_INLINE.length).toUpperCase();
+      continue;
+    }
+
+    if (arg === ARG_TICKET_FROM_BRANCH) {
+      result.ticketFromBranch = true;
+      continue;
+    }
   }
-  return flags;
+
+  return result;
 }
 
-function validateFlags(flags) {
-  const requiredFlags = ["ticket", "input", "outputPath", "ci"];
-  for (const flag of requiredFlags) {
-    if (!flags[flag]) {
-      throw new Error(`Missing required flag --${flag}`);
-    }
-  }
-  const ciState = flags.ci.toLowerCase();
-  if (ciState !== "success" && ciState !== "failure") {
-    throw new Error("--ci must be either 'success' or 'failure'");
-  }
-  return { ...flags, ci: ciState };
-}
-
-function getGitCommit() {
-  try {
-    const output = execSync("git rev-parse HEAD", {
-      cwd: process.cwd(),
-      stdio: ["ignore", "pipe", "ignore"],
-      encoding: "utf8",
-    });
-    return output.trim();
-  } catch (error) {
+function extractTicket(value) {
+  if (typeof value !== "string" || !value) {
     return null;
   }
+  const match = value.match(/\b(AT-(?:PATCH-)?\d+)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+function getTicketFromEnvBranch() {
+  const envCandidates = [
+    process.env.GITHUB_HEAD_REF,
+    process.env.GITHUB_REF_NAME,
+  ];
+
+  if (process.env.GITHUB_REF) {
+    const parts = process.env.GITHUB_REF.split("/");
+    envCandidates.push(parts[parts.length - 1]);
+  }
+
+  for (const candidate of envCandidates) {
+    const ticket = extractTicket(candidate);
+    if (ticket) {
+      return ticket;
+    }
+  }
+
+  const title = getTicketFromPrTitle();
+  return extractTicket(title);
+}
+
+function getTicketFromPrTitle() {
+  const titleEnvOrder = [
+    "GITHUB_PR_TITLE",
+    "PR_TITLE",
+    "PULL_REQUEST_TITLE",
+    "GITHUB_EVENT_PULL_REQUEST_TITLE",
+    "GH_PR_TITLE",
+  ];
+
+  for (const name of titleEnvOrder) {
+    const value = process.env[name];
+    if (typeof value === "string" && value) {
+      return value;
+    }
+  }
+
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) {
+    return null;
+  }
+
+  try {
+    const raw = fs.readFileSync(eventPath, "utf8");
+    const payload = JSON.parse(raw);
+    if (
+      payload &&
+      typeof payload === "object" &&
+      payload.pull_request &&
+      typeof payload.pull_request.title === "string"
+    ) {
+      return payload.pull_request.title;
+    }
+    if (
+      payload &&
+      typeof payload === "object" &&
+      payload.issue &&
+      typeof payload.issue.title === "string"
+    ) {
+      return payload.issue.title;
+    }
+  } catch (error) {
+    // ignore errors when reading/parsing event payload
+  }
+
+  return null;
 }
 
 function ensureDirectory(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
 }
 
-function getLogFilePath(ticket) {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const baseDir = path.resolve(
-    __dirname,
-    "..",
-    "artefacts",
-    "loop_logs",
-    `${year}-${month}`,
-  );
-  ensureDirectory(baseDir);
-  return path.join(baseDir, `${ticket}.jsonl`);
+function buildLogBody({ runId, ticket, summary }) {
+  const now = new Date().toISOString();
+  return [
+    "# Loop Log",
+    "",
+    `- ts: ${now}`,
+    `- run_id: ${runId}`,
+    `- ticket: ${ticket || "unknown"}`,
+    `- workflow: ${process.env.GITHUB_WORKFLOW || "local"}`,
+    "",
+    "## Summary",
+    summary ? summary : "(none)",
+    "",
+  ].join("\n");
 }
 
-function buildLogEntry(flags) {
-  const timestamp = new Date().toISOString();
-  const user = process.env.USER || process.env.USERNAME || null;
-  const gitCommit = getGitCommit();
-  return {
-    timestamp,
-    gitCommit,
-    user,
-    ticket: flags.ticket,
-    input: flags.input,
-    outputPath: flags.outputPath,
-    ci: flags.ci,
-    notes: flags.notes ?? null,
-  };
-}
-
-function appendLog(filePath, entry) {
-  const line = `${JSON.stringify(entry)}\n`;
-  fs.appendFileSync(filePath, line, { encoding: "utf8" });
+function writeLogFile({ ticket, runId, body }) {
+  const dir = path.join("artefacts", "loop_logs");
+  ensureDirectory(dir);
+  const ticketSegment = ticket || "_unknown";
+  const fileName = `${ticketSegment}_${runId}.md`;
+  const filePath = path.join(dir, fileName);
+  fs.writeFileSync(filePath, body, "utf8");
+  return filePath;
 }
 
 function main() {
   try {
-    const flags = validateFlags(parseArgs(process.argv.slice(2)));
-    const logPath = getLogFilePath(flags.ticket);
-    const entry = buildLogEntry(flags);
-    appendLog(logPath, entry);
-    console.log(
-      `Log entry appended to ${path.relative(process.cwd(), logPath)}`,
-    );
+    const args = parseArgs(process.argv.slice(2));
+    let ticket = args.ticket;
+    if (!ticket && args.ticketFromBranch) {
+      ticket = getTicketFromEnvBranch();
+    }
+
+    const runId = process.env.GITHUB_RUN_ID || String(Date.now());
+    const body = buildLogBody({
+      runId,
+      ticket,
+      summary: args.summary,
+    });
+    const filePath = writeLogFile({ ticket, runId, body });
+    console.log("loop-log written:", filePath);
+    process.exit(0);
   } catch (error) {
-    console.error(error.message);
-    process.exit(1);
+    console.error("loop-log failed:", error.message);
+    process.exit(0);
   }
 }
 
