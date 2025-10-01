@@ -26,7 +26,7 @@ Die zugehörigen Arbeiten bündeln die Tickets AT-001, AT-002 sowie den Patch AT
 
 ## 5. Empfehlung (klar)
 
-**Entscheidung:** M1: NOT READY  
+**Entscheidung:** M1: NOT READY
 **Nächste Schritte (max. 3, priorisiert):**
 
 1. Persistente Evidence aktivieren: Workflows so anpassen, dass `scripts/ci-metrics.mjs` und `tools/loop-log.mjs` Outputs erzeugen und via `scripts/commit-if-changed.mjs` einchecken (Loop-Logs & ci-metrics.jsonl).【F:scripts/ci-metrics.mjs†L1-L42】【F:tools/loop-log.mjs†L1-L189】【F:scripts/commit-if-changed.mjs†L23-L41】
