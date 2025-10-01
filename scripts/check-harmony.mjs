@@ -64,7 +64,8 @@ function normalizeLoopName(s) {
 function parsePlan(md) {
   const tickets = new Set();
   const loopMap = {}; // loopName -> Set of tickets
-  const ticketLoopRegex = /\*\*?(AT-(?:PATCH-)?\d+)\s*\(Loop:\s*([^)]+)\)\*?\s*:/g;
+  const ticketLoopRegex =
+    /\*\*?(AT-(?:PATCH-)?\d+)\s*\(Loop:\s*([^)]+)\)\*?\s*:/g;
   let m;
   while ((m = ticketLoopRegex.exec(md))) {
     const t = m[1];
@@ -97,7 +98,9 @@ function parseSystem(md) {
   let m;
   while ((m = re.exec(md))) {
     const headLine = md.slice(m.index, md.indexOf("\n", m.index) + 1);
-    const loopName = normalizeLoopName(headLine.replace(/^#+\s+/, "").replace(/^[🔹\s]*/, ""));
+    const loopName = normalizeLoopName(
+      headLine.replace(/^#+\s+/, "").replace(/^[🔹\s]*/, ""),
+    );
     const block = sectionBetween(md, m.index);
     const artefacts = new Set();
     const tickets = new Set();
@@ -116,7 +119,7 @@ function parseSystem(md) {
         /`[^`]+`/.test(line) ||
         /(\.md|\.yml|\.yaml|\.mjs|\.jsonl|\.json|\.mdx)\b/.test(line) ||
         /(Registry|Guide|Dashboard|Systemkarte|Report|Policy|Config|Template|Workflow)/i.test(
-          line
+          line,
         )
       ) {
         artefacts.add(line.replace(/^`|`$/g, ""));
@@ -184,7 +187,8 @@ function main() {
 
   if (!planMd) errors.push(`Plan nicht gefunden: ${args.plan}`);
   if (!sysMd) errors.push(`Systemkarte nicht gefunden: ${args.system}`);
-  if (!fs.existsSync(loopsDir)) errors.push(`Loops-Verzeichnis nicht gefunden: ${loopsDir}`);
+  if (!fs.existsSync(loopsDir))
+    errors.push(`Loops-Verzeichnis nicht gefunden: ${loopsDir}`);
   if (errors.length) return finalize({ errors, warnings, info });
 
   const plan = parsePlan(planMd);
@@ -200,7 +204,11 @@ function main() {
     const md = readFile(path.join(loopsDir, f));
     if (!md) continue;
     const parsed = parseLoopDoc(md);
-    loopDocs[parsed.loop] = loopDocs[parsed.loop] || { tickets: new Set(), artefacts: new Set(), files: [] };
+    loopDocs[parsed.loop] = loopDocs[parsed.loop] || {
+      tickets: new Set(),
+      artefacts: new Set(),
+      files: [],
+    };
     parsed.files = [f];
     // merge
     for (const t of parsed.tickets) loopDocs[parsed.loop].tickets.add(t);
@@ -211,7 +219,9 @@ function main() {
   // 1) Existiert zu jedem Loop der Systemkarte ein Loop-Dokument?
   for (const b of sysBlocks) {
     if (!loopDocs[b.loop]) {
-      errors.push(`Loop-Dokument fehlt: "${b.loop}" (Systemkarte führt es auf, aber kein passendes MD in ${loopsDir}/)`);
+      errors.push(
+        `Loop-Dokument fehlt: "${b.loop}" (Systemkarte führt es auf, aber kein passendes MD in ${loopsDir}/)`,
+      );
     }
   }
 
@@ -224,7 +234,7 @@ function main() {
 
   const loopDiffs = [];
   for (const ln of loopNames) {
-    const sysT = new Set((sysBlocks.find((b) => b.loop === ln)?.tickets) || []);
+    const sysT = new Set(sysBlocks.find((b) => b.loop === ln)?.tickets || []);
     const docT = new Set(loopDocs[ln]?.tickets || []);
     const planT = new Set(plan.loopMap[ln] || []);
 
@@ -233,7 +243,12 @@ function main() {
     const d_doc_plan = diffSets(docT, planT);
 
     const anyDiff =
-      d_sys_doc.onlyA.length || d_sys_doc.onlyB.length || d_sys_plan.onlyA.length || d_sys_plan.onlyB.length || d_doc_plan.onlyA.length || d_doc_plan.onlyB.length;
+      d_sys_doc.onlyA.length ||
+      d_sys_doc.onlyB.length ||
+      d_sys_plan.onlyA.length ||
+      d_sys_plan.onlyB.length ||
+      d_doc_plan.onlyA.length ||
+      d_doc_plan.onlyB.length;
 
     if (anyDiff) {
       loopDiffs.push({ loop: ln, d_sys_doc, d_sys_plan, d_doc_plan });
@@ -243,16 +258,22 @@ function main() {
 
   // 3) Vollständigkeit: alle Tickets aus dem Plan in mind. Systemkarte ODER Loop-Doc?
   const allInSys = new Set(sysBlocks.flatMap((b) => [...b.tickets]));
-  const allInDocs = new Set(Object.values(loopDocs).flatMap((x) => [...x.tickets]));
-  const uncovered = [...plan.tickets].filter((t) => !allInSys.has(t) && !allInDocs.has(t));
+  const allInDocs = new Set(
+    Object.values(loopDocs).flatMap((x) => [...x.tickets]),
+  );
+  const uncovered = [...plan.tickets].filter(
+    (t) => !allInSys.has(t) && !allInDocs.has(t),
+  );
   if (uncovered.length) {
-    errors.push(`Tickets im Plan, aber weder Systemkarte noch Loop-Dokument: ${uncovered.join(", ")}`);
+    errors.push(
+      `Tickets im Plan, aber weder Systemkarte noch Loop-Dokument: ${uncovered.join(", ")}`,
+    );
   }
 
   // 4) Artefakt-Abgleich (weich, nur Warnung): Systemkarte vs. Loop-Dokumente
   const artefactDiffs = [];
   for (const ln of loopNames) {
-    const sysA = new Set((sysBlocks.find((b) => b.loop === ln)?.artefacts) || []);
+    const sysA = new Set(sysBlocks.find((b) => b.loop === ln)?.artefacts || []);
     const docA = new Set(loopDocs[ln]?.artefacts || []);
     const d = diffSets(sysA, docA);
     if (d.onlyA.length || d.onlyB.length) {
@@ -283,7 +304,13 @@ function nowStamp() {
 }
 
 function finalize(result) {
-  const { errors = [], warnings = [], info = [], loopDiffs = [], artefactDiffs = [] } = result;
+  const {
+    errors = [],
+    warnings = [],
+    info = [],
+    loopDiffs = [],
+    artefactDiffs = [],
+  } = result;
 
   // Console summary
   console.log("• Harmony Report");
@@ -297,7 +324,11 @@ function finalize(result) {
     ensureDir(dir);
     const base = path.join(dir, `harmony-${nowStamp()}`);
     const json = {
-      summary: { errors: errors.length, warnings: warnings.length, info: info.length },
+      summary: {
+        errors: errors.length,
+        warnings: warnings.length,
+        info: info.length,
+      },
       info,
       warnings,
       errors,
@@ -310,7 +341,9 @@ function finalize(result) {
     const md = [];
     md.push("# Harmony Report");
     md.push("");
-    md.push(`**Inputs:** plan=${args.plan}, system=${args.system}, loops=${args.loops}`);
+    md.push(
+      `**Inputs:** plan=${args.plan}, system=${args.system}, loops=${args.loops}`,
+    );
     md.push("");
     md.push("## Summary");
     md.push(`- Errors: **${errors.length}**`);
@@ -332,10 +365,18 @@ function finalize(result) {
       md.push("\n## Ticket Diffs per Loop");
       for (const ld of loopDiffs) {
         md.push(`### ${ld.loop}`);
-        md.push(`- Systemkarte ∖ Loop-Docs: ${ld.d_sys_doc.onlyA.join(", ") || "—"}`);
-        md.push(`- Loop-Docs ∖ Systemkarte: ${ld.d_sys_doc.onlyB.join(", ") || "—"}`);
-        md.push(`- Systemkarte ∖ Plan: ${ld.d_sys_plan.onlyA.join(", ") || "—"}`);
-        md.push(`- Plan ∖ Systemkarte: ${ld.d_sys_plan.onlyB.join(", ") || "—"}`);
+        md.push(
+          `- Systemkarte ∖ Loop-Docs: ${ld.d_sys_doc.onlyA.join(", ") || "—"}`,
+        );
+        md.push(
+          `- Loop-Docs ∖ Systemkarte: ${ld.d_sys_doc.onlyB.join(", ") || "—"}`,
+        );
+        md.push(
+          `- Systemkarte ∖ Plan: ${ld.d_sys_plan.onlyA.join(", ") || "—"}`,
+        );
+        md.push(
+          `- Plan ∖ Systemkarte: ${ld.d_sys_plan.onlyB.join(", ") || "—"}`,
+        );
         md.push(`- Loop-Docs ∖ Plan: ${ld.d_doc_plan.onlyA.join(", ") || "—"}`);
         md.push(`- Plan ∖ Loop-Docs: ${ld.d_doc_plan.onlyB.join(", ") || "—"}`);
         md.push("");
@@ -345,8 +386,12 @@ function finalize(result) {
       md.push("\n## Artefact Diffs per Loop");
       for (const ad of artefactDiffs) {
         md.push(`### ${ad.loop}`);
-        md.push(`- Systemkarte ∖ Loop-Docs: ${ad.diff.onlyA.join(", ") || "—"}`);
-        md.push(`- Loop-Docs ∖ Systemkarte: ${ad.diff.onlyB.join(", ") || "—"}`);
+        md.push(
+          `- Systemkarte ∖ Loop-Docs: ${ad.diff.onlyA.join(", ") || "—"}`,
+        );
+        md.push(
+          `- Loop-Docs ∖ Systemkarte: ${ad.diff.onlyB.join(", ") || "—"}`,
+        );
         md.push("");
       }
     }
