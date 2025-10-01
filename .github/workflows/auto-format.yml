@@ -44,8 +44,7 @@ jobs:
         run: |
           git fetch --depth=50 origin "${{ github.head_ref }}" || true
           N=$(git log -n 50 --pretty='%an|%s' \
-              | grep -E 'github-actions\[bot]\|.*(auto-format|prettier)' \
-              | wc -l)
+              | awk '/github-actions\[bot]\|.*(auto-format|prettier)/ {c++} END {print c+0}')
           echo "n=$N" >> "$GITHUB_OUTPUT"
 
       - name: Prettier (write & commit)
