@@ -1,0 +1,64 @@
+name: harmony
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'artefacts/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch: {}
+
+concurrency:
+  group: harmony-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      # Non-blocking Standardlauf (Info/Warnings ins Summary, Report als Artefakt)
+      - name: Harmony (non-strict)
+        id: harmony
+        continue-on-error: true
+        run: node scripts/check-harmony.mjs --write-report
+
+      - name: Upload harmony report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-report
+          path: artefacts/reports/harmony-*.{json,md}
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Harmony Check" >> $GITHUB_STEP_SUMMARY
+          echo "- Mode: non-strict (PR blockt nicht)" >> $GITHUB_STEP_SUMMARY
+          echo "- Reports: **artefacts/reports/harmony-*.md** (als Artefakt angehängt)" >> $GITHUB_STEP_SUMMARY
+
+  # Strenger Gate NUR wenn Plan/Systemkarte/Loops verändert wurden
+  strict:
+    runs-on: ubuntu-latest
+    needs: run
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect relevant changes
+        id: ch
+        run: |
+          BASE=${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/$BASE...${{ github.sha }} || true)
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep -E '^(artefacts/systemkarte\.md|artefacts/loops/.*\.md|artefacts/project_plan_.*\.md)$' && echo "strict=true" >> $GITHUB_OUTPUT || echo "strict=false" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Harmony (strict on structural changes)
+        if: steps.ch.outputs.strict == 'true'
+        run: node scripts/check-harmony.mjs --strict --write-report
