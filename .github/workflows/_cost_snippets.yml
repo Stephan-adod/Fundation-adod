@@ -1,0 +1,21 @@
+# Reusable cost snippets
+
+# setze Startzeit zu Beginn eines Jobs/Steps
+START_TIMER: &START_TIMER
+  - name: Start timer
+    run: echo "START_TS=$(date +%s)" >> $GITHUB_ENV
+
+# schreibe Metriken + committe nur bei Änderungen (always, same-repo)
+WRITE_METRICS_AND_COMMIT: &WRITE_METRICS_AND_COMMIT
+  - name: Metrics (write)
+    if: always()
+    env:
+      RATE_PER_MIN: ${{ env.RATE_PER_MIN }}
+    run: |
+      END_TS=$(date +%s)
+      DUR=$(( END_TS - ${START_TS:-END_TS} ))
+      node scripts/ci-metrics.mjs ${{ matrix.job_name || 'job' }} ${{ job.status }} --duration $DUR --rate ${RATE_PER_MIN:-0}
+  - name: Persist metrics (commit if changed)
+    if: always()
+    run: node scripts/commit-if-changed.mjs
+    continue-on-error: true

@@ -24,8 +24,11 @@ jobs:
   format:
     runs-on: ubuntu-latest
     env:
-      MAX_AUTOFIX_COMMITS: 2
+      MAX_AUTOFIX_COMMITS: 1
+      RATE_PER_MIN: 0.008
     steps:
+      - name: Start timer
+        run: echo "START_TS=$(date +%s)" >> $GITHUB_ENV
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
@@ -40,9 +43,12 @@ jobs:
 
       - name: Count previous bot commits
         id: count
+        shell: bash
         run: |
-          N=$(git log --pretty="%an|%s" -n 10 | grep -c "github-actions\[bot].*auto-format")
-          echo "n=$N" >> $GITHUB_OUTPUT
+          git fetch --depth=50 origin "${{ github.head_ref }}" || true
+          N=$(git log -n 50 --pretty='%an|%s' \
+              | awk '/github-actions\[bot]\|.*(auto-format|prettier)/ {c++} END {print c+0}')
+          echo "n=$N" >> "$GITHUB_OUTPUT"
 
       - name: Prettier (write & commit)
         if: steps.chk.outcome == 'failure' && steps.count.outputs.n < env.MAX_AUTOFIX_COMMITS
@@ -57,11 +63,6 @@ jobs:
         continue-on-error: true
         run: npx --yes prettier --check .
 
-      - name: Metrics (auto-format)
-        if: always()
-        run: node scripts/ci-metrics.mjs auto-format ${{ job.status }}
-        continue-on-error: true
-
       - name: Job summary
         if: always()
         run: |
@@ -69,3 +70,17 @@ jobs:
           echo "- Initial check: **${{ steps.chk.outcome }}**" >> $GITHUB_STEP_SUMMARY
           echo "- Bot commits recently: **${{ steps.count.outputs.n }}** / max $MAX_AUTOFIX_COMMITS" >> $GITHUB_STEP_SUMMARY
           echo "- Note: Workflow ist **nicht-blockierend**" >> $GITHUB_STEP_SUMMARY
+      - name: Metrics (write)
+        if: always()
+        env:
+          RATE_PER_MIN: ${{ env.RATE_PER_MIN }}
+        run: |
+          END_TS=$(date +%s)
+          DUR=$(( END_TS - ${START_TS:-END_TS} ))
+          node scripts/ci-metrics.mjs auto-format ${{ job.status }} --duration $DUR --rate ${RATE_PER_MIN:-0}
+        continue-on-error: true
+
+      - name: Persist metrics (commit if changed)
+        if: always()
+        run: node scripts/commit-if-changed.mjs
+        continue-on-error: true
