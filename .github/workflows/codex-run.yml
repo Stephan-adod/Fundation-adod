@@ -19,12 +19,18 @@ jobs:
       - name: Write codex trigger marker
         run: |
           mkdir -p artefacts/reports
-          echo "codex trigger by @${{ github.actor }} at $GITHUB_RUN_ID" >> artefacts/reports/codex_triggers.log
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add artefacts/reports/codex_triggers.log
-          git commit -m "chore(codex): trigger marker"
-          git push
+          echo "$(date -Is) codex trigger by @${{ github.actor }} in PR #${{ github.event.issue.number }}" >> artefacts/reports/codex_triggers.log
+      - name: Commit marker (same-repo only)
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name || '' }}" = "${{ github.repository }}" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add artefacts/reports/codex_triggers.log
+            git commit -m "chore(codex): trigger log [skip ci]" || echo "nothing to commit"
+            git push
+          else
+            echo "skip commit (fork or missing head.ref)"
+          fi
       - name: Acknowledge
         uses: actions/github-script@v7
         with:
