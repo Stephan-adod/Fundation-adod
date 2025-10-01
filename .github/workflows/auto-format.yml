@@ -40,9 +40,13 @@ jobs:
 
       - name: Count previous bot commits
         id: count
+        shell: bash
         run: |
-          N=$(git log --pretty="%an|%s" -n 10 | grep -c "github-actions\[bot].*auto-format")
-          echo "n=$N" >> $GITHUB_OUTPUT
+          git fetch --depth=50 origin "${{ github.head_ref }}" || true
+          N=$(git log -n 50 --pretty='%an|%s' \
+              | grep -E 'github-actions\[bot]\|.*(auto-format|prettier)' \
+              | wc -l)
+          echo "n=$N" >> "$GITHUB_OUTPUT"
 
       - name: Prettier (write & commit)
         if: steps.chk.outcome == 'failure' && steps.count.outputs.n < env.MAX_AUTOFIX_COMMITS
