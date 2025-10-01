@@ -21,7 +21,9 @@ try {
   }
 
   try {
-    sh("git add artefacts/reports/ci-metrics.jsonl artefacts/loop_logs || true");
+    sh(
+      "git add artefacts/reports/ci-metrics.jsonl artefacts/loop_logs || true",
+    );
   } catch {
     // ignore staging errors
   }
