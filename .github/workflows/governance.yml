@@ -118,3 +118,6 @@ jobs:
         if: always()
         run: node scripts/ci-metrics.mjs governance-summary ${{ job.status }}
         continue-on-error: true
+      - name: Loop Log (non-blocking)
+        if: always()
+        run: node tools/loop-log.mjs --ticket-from-branch --summary "$GITHUB_STEP_SUMMARY" || true
