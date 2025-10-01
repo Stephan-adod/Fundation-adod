@@ -1,272 +1,187 @@
-# Operator-Runbook (Fundation-adon)
+# Operator Runbook v0.2 · Foundation
 
-Dieses Runbook beschreibt aus **Operator-Sicht** alle Loops (Plan, Build, Doc, Use-Feedback, Improve, Guard, Ops, Scale).
-Ziel: Jeder Schritt ist nachvollziehbar, reproduzierbar und driftfrei.
+_Status: v0.2 · Owner: Operator · Ziel: nachvollziehbar, reproduzierbar, driftfrei_
 
----
+Dieses Runbook beschreibt alle **9 Loops** aus Operator-Sicht. Es folgt stets dem Muster:
+**Purpose → Inputs → DoR → Schritte → Outputs/DoD → Evidence → KPIs → Pitfalls**.
 
-## Plan_Loop
-
-### Zweck
-
-Tickets schreiben, priorisieren und für den Build_Loop vorbereiten.
-
-### Schritte
-
-1. **Ziele & Scope klären**
-   - Systemkarte prüfen.
-   - Ziel / Problem definieren.
-2. **Ticket anlegen**
-   - Datei `tickets/AT-###.md` mit DoR & DoD.
-3. **Priorisieren**
-   - Dringlichkeit & Wert beurteilen.
-   - Ticket ggf. in Systemkarte/Backlog markieren.
-4. **Übergabe an Build_Loop**
-   - Ticket ist Input für Execution Prompt.
-
-### Stop-Checks
-
-- Ticketdatei existiert.
-- DoR & DoD vollständig.
-- Priorität klar.
-
-### Beispiel
-
-AT-001: Health-Check Script.
+**Hinweis:** Die 9 Loops = frühere „8 Loops“ **plus** neuer **Refinement Loop**.
 
 ---
 
-## Build_Loop
+## 0. Quickstart (Cheat Sheet)
 
-### Zweck
-
-Tickets automatisiert in Code & Artefakte umsetzen.
-
-### Schritte
-
-1. **Ticket bereitstellen**
-   - `tickets/AT-###.md` vollständig.
-2. **Execution Prompt starten**
-   - Ticket-Inhalt als Input geben.
-   - Prompt erzeugt Branch + Änderungen + PR.
-3. **Checks beobachten**
-   - `ci`, `docs-lite`, `iteration-log-guard` (falls Log verändert).
-4. **Review & Merge**
-   - PR-Beschreibung prüfen, DoD-Checkliste abhaken.
-5. **Feedback Prompt nutzen**
-   - Feedback in Iteration-Log-Block übersetzen.
-   - Am Ende von `artefacts/iteration_log.md` anhängen.
-
-### Stop-Checks
-
-- Alle Checks grün.
-- PR gemerged.
-- Iteration-Log-Eintrag appended.
-
-### Beispiel
-
-AT-001 erzeugt `tools/health-check.mjs`, `npm run health` und CI-Step.
+- **Branch-Name:** `feature/<TICKET_ID>-kurzbeschreibung` (z. B. `feature/AT-002-governance`).
+- **PR-Template nutzen:** DoD abhaken, Ticket referenzieren.
+- **Workflows beachten:** `auto-format`, `governance`, `docs-lite`, optional `/codex`.
+- **Evidence persistieren:** `artefacts/reports/ci-metrics.jsonl`, `artefacts/loop_logs/*`, `artefacts/execution/*`.
 
 ---
 
-## Doc_Loop
+## Loop 1 · Intake Loop (Business → Rebrief)
 
-### Zweck
+**Purpose**: Aus einer Idee ein klarer Auftrag (Ticket-Rohling).  
+**Inputs**: Business-Idee, Kontext.  
+**DoR**: Ziel skizziert; Nutzen grob benannt.  
+**Schritte**
 
-Wissen sichern, zugänglich machen, driftfrei halten.
-
-### Schritte
-
-1. **Prüfen, ob Ticket Doku erfordert**
-   - Änderungen an Systemkarte, Loop-Chartas, Runbook.
-2. **Execution Prompt nutzen**
-   - Doku-Updates werden über PR eingespielt, nicht manuell.
-3. **Auto-Fix abwarten**
-   - `docs-lite` korrigiert Markdown.
-4. **Operator-Review**
-   - Nur Inhalte prüfen, Format nicht.
-5. **Feedback Prompt nutzen** (falls Doku zentral geändert).
-
-### Stop-Checks
-
-- Änderungen kommen über Execution Prompt.
-- `docs-lite` grün.
-- Iteration-Log-Eintrag appended (falls relevant).
-
-### Beispiel
-
-AT-002 erweitert Systemkarte um KPI „Operator-Zufriedenheit“.
+1. Rebrief: Ziel, Nutzen, Scope (in/out), Risiken notieren.
+2. Ticket-Rohling anlegen (`tickets/AT-XXX.md` Draft).  
+   **Outputs/DoD**: Draft vorhanden mit Ziel & grobem Scope.  
+   **Evidence**: PR/Issue-Kommentar, Draft-Datei.  
+   **KPIs**: ≤30 min bis Draft.  
+   **Pitfalls**: Scope creep → in/out strikt notieren.
 
 ---
 
-## Use-Feedback_Loop
+## Loop 2 · Refinement Loop (Ticket schärfen)
 
-### Zweck
+**Purpose**: Ticket vor Umsetzung inhaltlich wasserdicht machen.  
+**Inputs**: Draft `tickets/AT-XXX.md`.  
+**DoR**: Sektionen Ziel, Deliverables, DoR, DoD, KPI vorhanden.  
+**Schritte**
 
-Feedback aus Nutzung, CI und Operator-Erfahrungen sammeln.
-
-### Schritte
-
-1. **Feedback-Quellen beobachten**
-   - CI-Checks, Operator-Erfahrungen, externe Nutzer.
-2. **Feedback erfassen**
-   - Kurz dokumentieren, nicht verlieren.
-3. **Feedback Prompt nutzen**
-   - Input: Logs, PR-Status.
-   - Output: Iteration-Log-Block.
-4. **Iteration-Log anhängen**
-   - Block am Ende von `artefacts/iteration_log.md` ergänzen.
-5. **Optional: Ticket anlegen**
-   - Wenn Feedback klaren neuen Task ergibt.
-
-### Stop-Checks
-
-- Feedback dokumentiert.
-- Iteration-Log-Eintrag appended.
-- Ticket erstellt, falls nötig.
-
-### Beispiel
-
-PR #7: docs-lite musste Auto-Fix machen → Feedback Prompt erzeugt Iteration-Log-Eintrag + Ticket AT-002.
+1. **Refinement Prompt v0.2** anwenden (8 Fragen + 3 Empfehlungen).
+2. Ticket anpassen gemäß Empfehlungen.  
+   **Outputs/DoD**: Ticket enthält klare Deliverables, messbares DoR/DoD, KPIs.  
+   **Evidence**: Analyse-Tabelle & Empfehlungen (als Anhang oder Loop-Log).  
+   **KPIs**: ≥80 % Tickets ohne Rework nach Refinement.  
+   **Pitfalls**: fehlende KPIs → später keine Erfolgsmessung.
 
 ---
 
-## Improve_Loop
+## Loop 3 · Execution Loop (Implementierung)
 
-### Zweck
+**Purpose**: Änderungen sauber umsetzen (Code/Docs/Workflows).  
+**Inputs**: Freigegebenes AT-Ticket, ggf. Execution Prompt.  
+**DoR**: Abhängigkeiten geklärt; Branch erstellt.  
+**Schritte**
 
-Systematische Verbesserungen aus Feedback & Gaps umsetzen.
-
-### Schritte
-
-1. **Input prüfen**
-   - Iteration-Log, Feedback, Gap-Analysen.
-2. **Entscheiden**
-   - Sofort fixen, parken oder neues Ticket.
-3. **Ticket anlegen (falls nötig)**
-   - DoR/DoD definieren.
-4. **Umsetzen**
-   - Kleine Fixes direkt, größere via Build_Loop.
-5. **Iteration-Log ergänzen**
-   - Verbesserungen dokumentieren.
-
-### Stop-Checks
-
-- Verbesserung dokumentiert.
-- Ticket erstellt (falls nötig).
-- Keine Ad-hoc-Änderungen ohne Log.
-
-### Beispiel
-
-AT-002: Improve Execution Prompt Template.
+1. Änderungen gemäß Ticket erstellen (nur Textartefakte).
+2. PR eröffnen, PR-Template ausfüllen.
+3. Optional: `/codex` für begleitende Aktionen.  
+   **Outputs/DoD**: PR steht; alle Dateien vorhanden; keine Binärartefakte.  
+   **Evidence**: PR-Beschreibung (DoD-Check), Artefakte im Diff.  
+   **KPIs**: ≤3 Operator-Aktionen pro Ticket (Friction).  
+   **Pitfalls**: unscharfe Deliverables → Nacharbeit.
 
 ---
 
-## Guard_Loop
+## Loop 4 · Governance Loop (CI/Self-Healing)
 
-### Zweck
+**Purpose**: Qualitätssicherung via `auto-format`, `governance`, `docs-lite`.  
+**Inputs**: Offener PR.  
+**DoR**: Workflows aktiv, Pfadfilter & Concurrency gesetzt.  
+**Schritte**
 
-Governance automatisieren, Drift verhindern.
-
-### Schritte
-
-1. **Branch-Protection prüfen**
-   - Require PRs, required checks aktiv.
-2. **PR-Checks überwachen**
-   - `ci`, `docs-lite`, `iteration-log-guard`.
-3. **Auto-Fix akzeptieren**
-   - Keine manuelle Formatkorrektur.
-4. **Iteration-Log Guard beachten**
-   - Nur Append erlaubt.
-5. **Phase-Wechsel prüfen**
-   - Phase 1 tolerant, Phase 2 strenger.
-
-### Stop-Checks
-
-- Alle PRs grün.
-- main nur via PR.
-- Iteration-Log nur appended.
-
-### Beispiel
-
-AT-001: docs-lite auto-fix commit → PR bleibt grün.
+1. `auto-format` (Prettier check → auto-fix mit Guardrail).
+2. `governance` (UTF-8, Ticket-Validator, Summary).
+3. `docs-lite` (Markdown-Hygiene).  
+   **Outputs/DoD**: CI grün oder auto-fixed; Summary im PR sichtbar.  
+   **Evidence**: Step-Summary, Commits „chore(prettier)“.  
+   **KPIs**: Green-Rate ≥95 %, Auto-Fix-Quote <20 %.  
+   **Pitfalls**: Fork-PRs haben keine Push-Perms → Logs ggf. nicht committet.
 
 ---
 
-## Ops_Loop
+## Loop 5 · Evidence & Metrics Loop
 
-### Zweck
+**Purpose**: Dauer/Kosten/Status persistieren, Loop-Logs schreiben.  
+**Inputs**: CI-Runs.  
+**DoR**: `scripts/ci-metrics.mjs`, `scripts/commit-if-changed.mjs`, `tools/loop-log.mjs`.  
+**Schritte**
 
-Täglicher, wöchentlicher und monatlicher Betrieb sichern.
-
-### Schritte
-
-- **Daily:**
-  - PR-Checks prüfen.
-  - Iteration-Log ggf. ergänzen.
-  - Health Check laufen lassen.
-- **Weekly:**
-  - Systemkarte/Loops Review.
-  - Offene Befunde priorisieren.
-- **Monthly:**
-  - Guard_Loop-Einstellungen prüfen.
-  - KPIs prüfen.
-  - Phase-Wechsel entscheiden.
-
-### Stop-Checks
-
-- Daily: keine roten PRs übersehen.
-- Weekly: Prioritäten klar.
-- Monthly: KPIs geprüft, Governance angepasst.
-
-### Beispiel
-
-Weekly Review zeigt wiederholt Auto-Fix → Ticket AT-003.
+1. Am Jobende Dauer berechnen → `ci-metrics.mjs` schreiben.
+2. Loop-Log mit `--ticket-from-branch` + Summary schreiben.
+3. Nur bei Änderungen committen (same-repo).  
+   **Outputs/DoD**: `artefacts/reports/ci-metrics.jsonl`, `artefacts/loop_logs/*.md`.  
+   **Evidence**: JSONL & MD-Logs im Repo.  
+   **KPIs**: vollständige Belege pro PR-Run.  
+   **Pitfalls**: head_ref/fork → Commit skippt.
 
 ---
 
-## Scale_Loop
+## Loop 6 · Diagnose/Drift Loop
 
-### Zweck
+**Purpose**: Soll-Ist-Abgleich (Plan ↔ Repo), Drift früh erkennen.  
+**Inputs**: Projektplan, Systemkarte, Tickets, Workflows.  
+**DoR**: Analyse-Prompts vorhanden.  
+**Schritte**
 
-System gezielt erweitern: neue Use Cases, Automationen, Templates.
-
-### Schritte
-
-1. **Input erkennen**
-   - Iteration-Log, KPIs, externe Anforderungen.
-2. **Hypothese bilden**
-   - Was bringt Wert? Automation, Use Case, Template?
-3. **Ticket anlegen**
-   - DoR/DoD definieren, Scope klar.
-4. **Umsetzung starten**
-   - Build_Loop via Execution Prompt.
-5. **Wirkung prüfen**
-   - Feedback Prompt → Iteration-Log-Eintrag.
-   - Im Weekly Review Nutzen evaluieren.
-
-### Stop-Checks
-
-- Skalierungsschritt klar & stabil.
-- Ticket angelegt.
-- Feedback dokumentiert.
-
-### Beispiel
-
-AT-003: Lockfile-Check in CI → stabilerer Workflow.
+1. Deep-Analysis Prompt (M1 vX.Y) ausführen.
+2. Gaps priorisieren (Impact/Cost).  
+   **Outputs/DoD**: Report unter `artefacts/reports/*.md`.  
+   **Evidence**: Gap-Report committet.  
+   **KPIs**: Drift <2 pro Meilenstein.  
+   **Pitfalls**: doppelte Tabellen/Inkonsistenzen im Report.
 
 ---
 
-# Zusammenfassung
+## Loop 7 · Harmonization Loop (Systemkarte/Docs)
 
-- **Plan_Loop:** Tickets schreiben.
-- **Build_Loop:** Tickets umsetzen.
-- **Doc_Loop:** Wissen aktuell halten.
-- **Use-Feedback_Loop:** Befunde sammeln.
-- **Improve_Loop:** Verbesserungen einleiten.
-- **Guard_Loop:** Governance automatisieren.
-- **Ops_Loop:** Betrieb sichern.
-- **Scale_Loop:** System erweitern.
+**Purpose**: Systemkarte & Loop Docs gegen Repo synchron halten.  
+**Inputs**: Systemkarte, Loops, Repo-Inhalte.  
+**DoR**: Alle Referenzen gesammelt.  
+**Schritte**
 
-👉 Dieses Runbook ist der **Operator-Guide**.
-Die Loop-Chartas (`artefacts/loops/*`) bleiben high-level, während hier die **konkrete Ausführung** beschrieben ist.
+1. Referenzen prüfen (existieren die genannten Artefakte?).
+2. Nicht existierende streichen oder „light“ anlegen.  
+   **Outputs/DoD**: Konsistente Doku, keine toten Referenzen.  
+   **Evidence**: Diff mit Doku-Änderungen.  
+   **KPIs**: 0 tote Links/Referenzen.  
+   **Pitfalls**: Artefakte ankündigen aber nie anlegen.
+
+---
+
+## Loop 8 · Patch Loop (Quick Wins)
+
+**Purpose**: Kleine, wirkungsvolle Patches (AT-PATCH-XX).  
+**Inputs**: Patch-Idee, Ticket.  
+**DoR**: Klarer Nutzen, geringe Komplexität.  
+**Schritte**
+
+1. Patch-Ticket erstellen (DoD klar, Evidence benannt).
+2. Umsetzung → PR → CI → Merge.  
+   **Outputs/DoD**: Patch wirkt messbar (z. B. Green-Rate).  
+   **Evidence**: Step-Summary, JSONL, Screenshots.  
+   **KPIs**: Aufwand <0.5 PT, Nutzen kurzfristig sichtbar.  
+   **Pitfalls**: Patches ohne Ticket → Governance-Bruch.
+
+---
+
+## Loop 9 · Feedback & Retro Loop
+
+**Purpose**: Lernen, KPIs bewerten, nächste Schritte ableiten.  
+**Inputs**: Metrics/Evidence, Gap-Reports, CI-Historie.  
+**DoR**: Daten vorhanden & verständlich.  
+**Schritte**
+
+1. KPIs auswerten (Green-Rate, Auto-Fix-Quote, Kosten).
+2. Gaps → neue Tickets/Patches ableiten.  
+   **Outputs/DoD**: Kurz-Retro + Backlog-Updates.  
+   **Evidence**: Retro-Abschnitt im Artefakte-Log.  
+   **KPIs**: Time-to-Fix ↓, Rework-Rate ↓.  
+   **Pitfalls**: Retro ohne To-Dos → kein Fortschritt.
+
+---
+
+# `/codex`-Trigger: exakte Anleitung (Step-by-Step)
+
+## Voraussetzungen
+
+- Workflow **`.github/workflows/codex-run.yml`** liegt im Repo und hat:
+  - `on: issue_comment: types: [created]`
+  - `permissions: contents: write, pull-requests: write`
+  - Schritt, der **`artefacts/reports/codex_triggers.log`** schreibt **und** committet (same-repo).
+- PR stammt aus **demselben Repo** (keine Forks), damit der Commit erlaubt ist.
+
+## Schritte
+
+1. **Branch erstellen**  
+   `feature/AT-002-<kurz>` (oder passendes Ticket). Änderungen committen & pushen.
+
+2. **Pull Request öffnen**  
+   Gegen `main`. PR-Template ausfüllen, Ticket referenzieren (z. B. „Closes AT-002“).
+
+3. **Kommentar absetzen**  
+   Im **PR → Conversation** Tab einen **neuen Kommentar** mit **genau**:
