@@ -1,0 +1,70 @@
+name: AT Ticket
+description: Erzeuge ein AT-Ticket mit DoR/DoD/KPIs
+title: "AT-###: <Kurz-Titel>"
+labels: ["ticket", "AT"]
+body:
+  - type: input
+    id: at_id
+    attributes:
+      label: Ticket-ID
+      description: "Format: AT-### oder AT-PATCH-###"
+      placeholder: "AT-123"
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: Kurz-Titel
+      placeholder: "Green-Rate Hardening & Shadow Mode"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Ziel
+      placeholder: "Was soll erreicht werden? Bezug zum Zielbild."
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: "Konkrete Dateien/Artefakte, die entstehen/angepasst werden"
+    validations:
+      required: true
+  - type: textarea
+    id: dor
+    attributes:
+      label: DoR
+      description: "Definition of Ready (Voraussetzungen)"
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: DoD
+      description: "Definition of Done (prüfbare Kriterien)"
+    validations:
+      required: true
+  - type: textarea
+    id: kpis
+    attributes:
+      label: KPIs
+      description: "Messgrößen/Schwellen (z. B. Green-Rate ≥95 %)"
+    validations:
+      required: true
+  - type: textarea
+    id: deps
+    attributes:
+      label: Abhängigkeiten
+      placeholder: "Andere Tickets/Patches/Artefakte"
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risiken & Mitigation
+      placeholder: "Kosten, Over-Engineering, Security, Drift…"
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope (in/out)
+      placeholder: "Was ist explizit drin / draußen?"

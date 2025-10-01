@@ -1,0 +1,20 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "npx --yes prettier --write ."
+    },
+    {
+      "label": "validate",
+      "type": "shell",
+      "command": "node scripts/validate-ticket.mjs"
+    },
+    {
+      "label": "utf8",
+      "type": "shell",
+      "command": "node scripts/check-utf8.mjs --root ."
+    }
+  ]
+}
