@@ -73,14 +73,15 @@ jobs:
       - name: Metrics (write)
         if: always()
         env:
-          RATE_PER_MIN: ${{ env.RATE_PER_MIN }}
+          RATE_PER_MIN: ${{ env.RATE_PER_MIN || 0.008 }}
         run: |
           END_TS=$(date +%s)
           DUR=$(( END_TS - ${START_TS:-END_TS} ))
           node scripts/ci-metrics.mjs auto-format ${{ job.status }} --duration $DUR --rate ${RATE_PER_MIN:-0}
-        continue-on-error: true
-
-      - name: Persist metrics (commit if changed)
+      - name: Loop Log (non-blocking)
+        if: always()
+        run: node tools/loop-log.mjs --ticket-from-branch --summary "$GITHUB_STEP_SUMMARY" || true
+      - name: Persist metrics/logs if changed
         if: always()
         run: node scripts/commit-if-changed.mjs
         continue-on-error: true
