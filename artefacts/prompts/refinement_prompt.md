@@ -4,8 +4,8 @@
 
 ## Zweck
 
-Dieser Prompt unterstützt den **Refinement Loop**:  
-Bevor ein Ticket (AT-XXX.md) umgesetzt wird, wird es kritisch geprüft.  
+Dieser Prompt unterstützt den **Refinement Loop**:
+Bevor ein Ticket (AT-XXX.md) umgesetzt wird, wird es kritisch geprüft.
 Ziel: Klarheit schaffen, Deliverables und DoR/DoD schärfen, Operator-Friktion vermeiden.
 
 ---
@@ -32,7 +32,7 @@ Falls eine dieser Sektionen fehlt → Output:
 2. Beantworte jede Frage konkret auf Basis des Tickets.
 3. Dokumentiere die Antworten in einer **Tabelle** (Frage | Antwort | Status: ✅/⚠️/❌).
 4. Formuliere **3 Handlungsempfehlungen** – priorisiert (1–3), mit Begründung und Next Action.
-5. Schließe mit einer **Meta-Einschätzung**:  
+5. Schließe mit einer **Meta-Einschätzung**:
    _„Wie hoch ist die Wahrscheinlichkeit (1–5), dass dieses Ticket nach Refinement ohne Rework durchgeht?“_
 
 ---
