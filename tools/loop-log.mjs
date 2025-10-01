@@ -32,9 +32,15 @@ if (ticketFromBranch) {
     "";
   detectedTicket = extractTicket(branchCand);
 
-  if (!detectedTicket && process.env.GITHUB_EVENT_PATH && fs.existsSync(process.env.GITHUB_EVENT_PATH)) {
+  if (
+    !detectedTicket &&
+    process.env.GITHUB_EVENT_PATH &&
+    fs.existsSync(process.env.GITHUB_EVENT_PATH)
+  ) {
     try {
-      const ev = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+      const ev = JSON.parse(
+        fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"),
+      );
       const title = ev?.pull_request?.title || ev?.issue?.title || "";
       detectedTicket = extractTicket(title) || detectedTicket;
     } catch {}
