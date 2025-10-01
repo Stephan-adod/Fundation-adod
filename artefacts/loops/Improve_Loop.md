@@ -1,26 +1,37 @@
-# Improve_Loop
+# Diagnose/Systemic Loop
 
 ## Purpose
 
-Systematische Verbesserungen umsetzen (Iteration).
+Ganzheitliche Analyse auf System-Ebene, Blinde Flecken & 2nd/3rd Order Effects erkennen.
 
 ## Input
 
-- Befunde aus Use-Feedback
-- Gap-Analysen
+- Systemkarte
+- Loop-Dokumente
+- Projektplan
 
 ## Output
 
-- Anpassungen an Prozessen/Artefakten
-- Iteration-Log-Einträge
+- Systemweite Diagnose-Reports
+- Blinde-Flecken-Analysen
+- Systemkarte-Drift-Erkennung
 
 ## Operator-Rolle
 
-- Entscheidung: fix jetzt vs. parken
-- Änderungen freigeben
+- Reports interpretieren
+- Anpassungen in Plan & Loops einpflegen
+
+## Artefakte
+
+- Systemkarte (`artefacts/systemkarte.md`)
+- Blinde-Flecken-Report (`artefacts/reports/blindspots.md`)
+
+## Tickets/Patches
+
+- AT-007
 
 ## KPI
 
-- # Verbesserungen/Woche
-
-- Rework-Quote
+- 100 % Loops dokumentiert & verknüpft
+- Drift-Erkennung Systemkarte vs. Realität aktiv
+- ≥2 identifizierte 2nd/3rd Order Effects pro Quartal
