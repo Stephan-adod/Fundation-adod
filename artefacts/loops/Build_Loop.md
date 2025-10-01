@@ -1,24 +1,32 @@
-# Build_Loop
+# Execution Loop
 
 ## Purpose
-
-Tickets in Code und Artefakte umsetzen (Execution Prompt).
+Ticket zu Artefakt friktionsarm, automatisiert & CI-stabil transformieren.  
 
 ## Input
-
-- Tickets (AT-###) mit DoR/DoD
+- AT-Tickets (Operator-Eingabe)  
+- Prompts (Codex, Registry)  
+- Repo-Konfig (.foundation.yml)  
 
 ## Output
-
-- Code/Artefakt-Änderungen im PR
-- PR-Beschreibung (Zusammenfassung, DoD-Checkliste)
+- Artefakte (Docs, Reports, Config)  
+- Merge-fähige PRs mit grünem CI  
 
 ## Operator-Rolle
+- Ticket anlegen & prüfen (≤3 Actions/Ticket)  
+- Optional Codex-Trigger (/codex, Label)  
+- Review/Approve  
 
-- Review & Merge (kein Hand-Coding nötig)
-- Rollback-Hinweise prüfen
+## Artefakte
+- Ticket-Templates (Issue-Forms)  
+- Governance-Workflow (`.github/workflows/governance.yml`)  
+- Auto-Format Guardrails  
+- Prompt Registry (`prompts/`, `PROMPTS.md`)  
+
+## Tickets/Patches
+- AT-001, AT-002  
+- AT-PATCH-01, AT-PATCH-02, AT-PATCH-03, AT-PATCH-05  
 
 ## KPI
-
-- Lead Time Ticket→PR
-- Merge-Rate (% PRs ohne Rework)
+- CI-Green-Rate ≥90 % ohne Re-run  
+- Operator-Actions/Ticket ≤3  
