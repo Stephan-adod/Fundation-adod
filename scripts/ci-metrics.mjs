@@ -18,5 +18,9 @@ const rec = {
 
 const dir = path.join("artefacts", "reports");
 fs.mkdirSync(dir, { recursive: true });
-fs.appendFileSync(path.join(dir, "ci-metrics.jsonl"), JSON.stringify(rec) + "\n", "utf8");
+fs.appendFileSync(
+  path.join(dir, "ci-metrics.jsonl"),
+  JSON.stringify(rec) + "\n",
+  "utf8",
+);
 console.log("metrics:", rec);
