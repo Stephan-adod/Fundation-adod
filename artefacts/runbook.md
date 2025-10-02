@@ -192,10 +192,12 @@ Der `/codex` Trigger ist ein manueller Operator-Hebel. Er wird nur genutzt,
 wenn ein Ticket dies im DoD verlangt (z. B. AT-PATCH-01: Hybrid Trigger Evidence).
 
 ### Wann einsetzen?
+
 - Wenn Ticket-DoD "Hybrid Trigger" oder "Codex-Evidence" fordert
 - Wenn du bewusst eine Sonderaktion dokumentieren möchtest (Prompt, Meta-Ausführung)
 
 ### Wie auslösen?
+
 1. Öffne einen Pull Request aus demselben Repo (kein Fork).
 2. Gehe in den **Conversation Tab** des PR.
 3. Schreibe einen Kommentar mit exakt:
@@ -209,6 +211,7 @@ wenn ein Ticket dies im DoD verlangt (z. B. AT-PATCH-01: Hybrid Trigger Evidence
    ```
 
 ### Best Practices
+
 - Einmal pro Ticket, wenn DoD es verlangt.
 - Immer Branch-Namen nach Ticket konventionieren (`feature/AT-XXX-...`), damit Loop-Logs Ticket korrekt mappen.
 - Evidence-Link in PR-Beschreibung ergänzen: "Codex Trigger Evidence: siehe artefacts/reports/codex_triggers.log".
