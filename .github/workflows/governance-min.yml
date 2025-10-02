@@ -1,0 +1,35 @@
+name: governance-min
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tickets/**'
+      - 'docs/**'
+      - 'scripts/**'
+      - 'tools/**'
+      # bewusst KEIN '.github/workflows/**'
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Prettier (check only)
+        run: npx --yes prettier --check . || true
+
+      - name: UTF-8 / BOM / spacing (check only)
+        run: node scripts/check-utf8.mjs --root . || true
+
+      - name: Tickets (non-strict; check only)
+        run: node scripts/validate-ticket.mjs || true
+
+      - name: Summary (never fail)
+        run: |
+          echo "Baseline Summary:"
+          echo "- Prettier, UTF-8, Tickets wurden geprüft (read-only)."
+          echo "- Keine Commits durch CI. Shadow mode aktiv." || true
