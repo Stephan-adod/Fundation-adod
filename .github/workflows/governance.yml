@@ -1,12 +1,7 @@
 name: governance
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'tickets/**'
-      - 'scripts/**'
-      - '.github/workflows/**'
+  workflow_dispatch: {}
 
 concurrency:
   group: governance-${{ github.workflow }}-${{ github.ref }}
