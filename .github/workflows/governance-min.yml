@@ -1,13 +1,12 @@
 name: governance-min
+
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'tickets/**'
-      - 'docs/**'
-      - 'scripts/**'
-      - 'tools/**'
-      # bewusst KEIN '.github/workflows/**'
+      - '**'
+      - '!**/.github/workflows/**'
+
 permissions:
   contents: read
 
@@ -15,21 +14,48 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with: { node-version: 20 }
 
-      - name: Prettier (check only)
-        run: npx --yes prettier --check . || true
-
-      - name: UTF-8 / BOM / spacing (check only)
-        run: node scripts/check-utf8.mjs --root . || true
-
-      - name: Tickets (non-strict; check only)
-        run: node scripts/validate-ticket.mjs || true
-
-      - name: Summary (never fail)
+      - name: Init summary
         run: |
-          echo "Baseline Summary:"
-          echo "- Prettier, UTF-8, Tickets wurden geprüft (read-only)."
-          echo "- Keine Commits durch CI. Shadow mode aktiv." || true
+          {
+            echo "# Baseline Governance (read-only)";
+            echo "";
+            echo "- No commits by CI";
+            echo "- All checks are soft (warnings only)";
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prettier (check only, soft)
+        run: |
+          npx --yes prettier --check . \
+            || { echo "::warning::Prettier check failed (soft)"; true; }
+
+      - name: UTF-8 / BOM / spacing (soft, only if script exists)
+        if: ${{ hashFiles('scripts/check-utf8.mjs') != '' }}
+        run: |
+          node scripts/check-utf8.mjs --root . \
+            || { echo "::warning::UTF-8 check failed (soft)"; true; }
+
+      - name: Ticket validation (non-strict, soft, only if script exists)
+        if: ${{ hashFiles('scripts/validate-ticket.mjs') != '' }}
+        run: |
+          node scripts/validate-ticket.mjs \
+            || { echo "::warning::Ticket validation reported issues (soft)"; true; }
+
+      - name: Summary
+        run: |
+          {
+            echo "";
+            echo "## Results";
+            echo "- Prettier: soft-checked";
+            echo "- UTF-8: soft-checked (if script present)";
+            echo "- Tickets: soft-checked (if script present)";
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Always succeed
+        run: echo "✅ governance-min completed"
