@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 function parseArg(flag, defVal = "") {
-  const i = process.argv.findIndex(arg => arg === flag);
+  const i = process.argv.findIndex((arg) => arg === flag);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : defVal;
 }
 
@@ -26,9 +26,15 @@ function detectTicketFromEnv() {
     "";
   let ticket = extractTicket(branchCand);
 
-  if (!ticket && process.env.GITHUB_EVENT_PATH && fs.existsSync(process.env.GITHUB_EVENT_PATH)) {
+  if (
+    !ticket &&
+    process.env.GITHUB_EVENT_PATH &&
+    fs.existsSync(process.env.GITHUB_EVENT_PATH)
+  ) {
     try {
-      const ev = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+      const ev = JSON.parse(
+        fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"),
+      );
       const title = ev?.pull_request?.title || ev?.issue?.title || "";
       ticket = extractTicket(title) || ticket;
     } catch {}
@@ -46,13 +52,15 @@ function runUrl() {
 
 function nowStamp() {
   const d = new Date();
-  const pad = n => String(n).padStart(2, "0");
+  const pad = (n) => String(n).padStart(2, "0");
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
 }
 
 export function writeMarkdownSummary() {
   const outcome = (parseArg("--outcome", "success") || "success").toLowerCase();
-  const prettierFixArg = (parseArg("--prettier-fix", "false") || "false").toLowerCase();
+  const prettierFixArg = (
+    parseArg("--prettier-fix", "false") || "false"
+  ).toLowerCase();
   const prettierFix = prettierFixArg === "true" ? "true" : "false";
   const envTicket = detectTicketFromEnv();
   const ticket = envTicket ? envTicket.toUpperCase() : "unknown";
