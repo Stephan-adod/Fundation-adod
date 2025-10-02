@@ -21,6 +21,7 @@ permissions:
 env:
   SHADOW_MODE: true
   MAX_AUTOFIX_COMMITS: 1
+  METRICS_FILE: artefacts/reports/ci-metrics.jsonl
 
 jobs:
   run-checks:
@@ -63,9 +64,25 @@ jobs:
           git commit -am "chore(prettier): auto-format via CI" || echo "nothing to commit"
           git push origin HEAD:${{ github.head_ref }}
 
+      - name: Metrics start (prettier-recheck)
+        id: mstart_prettier
+        run: echo "started=$(date +%s%3N)" >> $GITHUB_OUTPUT
       - name: Prettier (re-check)
         continue-on-error: true
         run: npx --yes prettier --check .
+      - name: Metrics append (prettier-recheck)
+        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -e
+          mkdir -p artefacts/reports
+          END=$(date +%s%3N)
+          START=${{ steps.mstart_prettier.outputs.started }}
+          DUR_MS=$((END-START))
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COST=$(awk "BEGIN {printf \"%.6f\", $DUR_MS/1000 * 0.000001}")
+          echo "{\"ts\":\"$TS\",\"wf\":\"governance\",\"job\":\"prettier-recheck\",\"duration_ms\":$DUR_MS,\"cost_usd\":$COST,\"sha\":\"$SHA\"}" >> \"$METRICS_FILE\"
+          node scripts/commit-if-changed.mjs \"$METRICS_FILE\"
 
   run-utf8:
     runs-on: ubuntu-latest
@@ -74,9 +91,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - name: Metrics start (utf8)
+        id: mstart_utf8
+        run: echo "started=$(date +%s%3N)" >> $GITHUB_OUTPUT
       - name: UTF-8 / BOM / spacing
         continue-on-error: ${{ env.SHADOW_MODE == 'true' }}
         run: node scripts/check-utf8.mjs --root .
+      - name: Metrics append (utf8)
+        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -e
+          mkdir -p artefacts/reports
+          END=$(date +%s%3N)
+          START=${{ steps.mstart_utf8.outputs.started }}
+          DUR_MS=$((END-START))
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COST=$(awk "BEGIN {printf \"%.6f\", $DUR_MS/1000 * 0.000001}")
+          echo "{\"ts\":\"$TS\",\"wf\":\"governance\",\"job\":\"utf8\",\"duration_ms\":$DUR_MS,\"cost_usd\":$COST,\"sha\":\"$SHA\"}" >> \"$METRICS_FILE\"
+          node scripts/commit-if-changed.mjs \"$METRICS_FILE\"
 
   validate-all:
     runs-on: ubuntu-latest
@@ -85,9 +118,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - name: Metrics start (ticket-validator)
+        id: mstart_validator
+        run: echo "started=$(date +%s%3N)" >> $GITHUB_OUTPUT
       - name: Validate all tickets (non-strict)
         continue-on-error: true
         run: node scripts/validate-ticket.mjs
+      - name: Metrics append (ticket-validator)
+        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -e
+          mkdir -p artefacts/reports
+          END=$(date +%s%3N)
+          START=${{ steps.mstart_validator.outputs.started }}
+          DUR_MS=$((END-START))
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COST=$(awk "BEGIN {printf \"%.6f\", $DUR_MS/1000 * 0.000001}")
+          echo "{\"ts\":\"$TS\",\"wf\":\"governance\",\"job\":\"ticket-validator\",\"duration_ms\":$DUR_MS,\"cost_usd\":$COST,\"sha\":\"$SHA\"}" >> \"$METRICS_FILE\"
+          node scripts/commit-if-changed.mjs \"$METRICS_FILE\"
 
   collect-changed:
     runs-on: ubuntu-latest
@@ -125,6 +174,9 @@ jobs:
     steps:
       - name: Start timer
         run: echo "START_TS=$(date +%s)" >> $GITHUB_ENV
+      - name: Metrics start (summary)
+        id: mstart_summary
+        run: echo "started=$(date +%s%3N)" >> $GITHUB_OUTPUT
       - name: Governance Summary
         run: |
           echo "### Governance Summary" >> $GITHUB_STEP_SUMMARY
@@ -133,6 +185,19 @@ jobs:
           echo "- Tickets (non-strict): **${{ needs.validate-all.result }}**" >> $GITHUB_STEP_SUMMARY
           echo "- Tickets (strict, changed): **${{ needs.validate-changed.result }}**" >> $GITHUB_STEP_SUMMARY
           echo "- Shadow Mode: **${{ env.SHADOW_MODE }}** (Warnungen statt Fail für zusätzliche Checks)" >> $GITHUB_STEP_SUMMARY
+      - name: Metrics append (summary)
+        if: ${{ always() && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -e
+          mkdir -p artefacts/reports
+          END=$(date +%s%3N)
+          START=${{ steps.mstart_summary.outputs.started }}
+          DUR_MS=$((END-START))
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COST=$(awk "BEGIN {printf \"%.6f\", $DUR_MS/1000 * 0.000001}")
+          echo "{\"ts\":\"$TS\",\"wf\":\"governance\",\"job\":\"summary\",\"duration_ms\":$DUR_MS,\"cost_usd\":$COST,\"sha\":\"$SHA\"}" >> \"$METRICS_FILE\"
+          node scripts/commit-if-changed.mjs \"$METRICS_FILE\"
       - name: Metrics (write)
         if: always()
         env:
