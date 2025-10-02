@@ -1,32 +1,69 @@
-# AT-PATCH-12: Refinement Loop Einführung & Systemkarte-Anpassung
+# AT-PATCH-12: Prettier Auto-Fix im Governance-Workflow (CI-Rot minimieren)
 
 ## Ziel
+Prettier-Fehler sollen PRs **nicht mehr blockieren**. Der Governance-Workflow soll:
+1) zunächst `prettier --check` ausführen,  
+2) bei Bedarf **automatisch formatieren** (max. **1** Bot-Commit, nur **same-repo** PRs),  
+3) danach **re-checken** und die restlichen Qualitätsschritte (UTF-8, Ticket-Validator, Summary) **immer** ausführen.
 
-Den Execution Loop um einen vorgelagerten **Refinement-Schritt** erweitern, damit Tickets klarer, konsistenter und fundierter werden, bevor sie in die Umsetzung gehen.
+## Scope
+**In:** `.github/workflows/governance.yml` – Prettier-Sequenz + Guardrail.  
+**Out:** Stilregeln/Prettier-Config, weitere Workflows, Code-Logik.
 
-Damit wird verhindert, dass unklare Deliverables/DoD direkt in die Umsetzung laufen.
+## Dependencies
+- `.github/workflows/auto-format.yml` (bestehende Prettier-Nutzung) – **keine** Änderungen hier, nur Governance.  
+- Repo-Permissions für CI: `contents: write` (Bot-Commit).  
+- Same-Repo-PRs (Fork-PRs dürfen **nicht** committieren → Step wird sauber übersprungen).
 
 ## Deliverables
+- Anpassung in `governance.yml`:
+  - **Prettier (check)** mit `continue-on-error: true`.
+  - **Prettier (write & commit)** nur wenn:
+    - `steps.prettier.outcome == 'failure'`
+    - `steps.count.outputs.n < env.MAX_AUTOFIX_COMMITS` (Guardrail)
+    - `head.repo.full_name == github.repository` (same-repo)
+  - **Prettier (re-check)** unmittelbar danach.
+  - **Guardrail:** `env.MAX_AUTOFIX_COMMITS = 1`.
+  - Nachfolgende Jobs (**UTF-8**, **Ticket-Validator**, **Summary**) laufen **immer**.
+- Kurze Doku-Notiz im PR (What/Why/Guardrail).
 
-- Neues Loop-Dokument: `artefacts/loops/Refinement_Loop.md`.
-- Update der Systemkarte (`artefacts/systemkarte.md`):
-  - Ergänzung Refinement Loop.
-  - Execution Loop wird offiziell „Execution + Refinement“.
-- Ticket-Workflow-Regel: Kein AT-Ticket geht in Codex/Execution, bevor es ein Refinement-Durchgang hatte.
+## Definition of Ready (DoR)
+- [ ] PR stammt **nicht** aus Fork.  
+- [ ] `contents: write` für Actions vorhanden.  
+- [ ] `env.MAX_AUTOFIX_COMMITS: 1` vorgesehen.  
+- [ ] Ticket referenziert in PR-Titel/Branch (`feature/AT-PATCH-12-...`).
 
-## DoR
+## Umsetzung / Schritte
+1) Prettier-Check-Step auf **non-blocking** setzen (`continue-on-error: true`).  
+2) Zähl-Step für frühere Bot-Commits (awk/grep, fail-safe).  
+3) Bedingten Auto-Fix implementieren (write & commit, same-repo, Guardrail).  
+4) Re-Check.  
+5) Restliche Governance-Steps **immer** laufen lassen.  
+6) PR-Beschreibung mit kurzer Begründung + Guardrail-Hinweis ergänzen.
 
-- Systemkarte v0.2 im Repo.
-- Bestehende Loop-Dokumente harmonisiert.
+## Definition of Done (DoD)
+- [ ] **CI grün** auf mind. **1 PR**, der vorher an Prettier scheiterte.  
+- [ ] **Auto-Fix-Commit** sichtbar: `chore(prettier): auto-format via CI` (oder „nothing to commit“ geloggt).  
+- [ ] **UTF-8**, **Ticket-Validator** & **Summary** laufen im selben Workflow-Run nach Prettier.  
+- [ ] **Evidence** im Repo:
+  - Link zum Governance-Run mit Auto-Fix-Step  
+  - Diff mit Bot-Commit  
+  - Hinweis in `artefacts/loop_logs/*` (Summary)  
+- [ ] **Retro-Log aktualisiert** (kurzer Abschnitt: Outcome, Effekt auf Green-Rate/Friction).  
 
-## DoD
+## KPIs
+- **Governance Rot-Rate durch Prettier**: ↓ auf **< 5 %** (über letzte 20 Runs).  
+- **Auto-Fix-Quote**: **< 20 %** der PRs (zeigt, dass lokale Setups i. d. R. ok sind).  
+- **Operator-Friction**: zusätzliche manuelle Aktionen wegen Formatierung **≤ 1** pro PR (Selbstauskunft + CI-Historie).
 
-- Refinement Loop dokumentiert (Purpose, Input, Output, Operator-Rolle, Artefakte, KPIs).
-- Systemkarte erweitert: Refinement Loop integriert und mit Execution Loop verknüpft.
-- Mindestens 1 Ticket (z. B. AT-PATCH-11) als Pilot im Refinement-Loop dokumentiert.
+## Risiken & Mitigation
+- **Commit-Loop** → Guardrail `MAX_AUTOFIX_COMMITS = 1`, Zähl-Step fail-safe.  
+- **Fork-PRs ohne Rechte** → same-repo-Guard; Step überspringt Commit, Workflow bleibt informativ.  
+- **Überformatierung** → nur Prettier; keine inhaltlichen Änderungen.
 
-## KPI
+## Rollback
+- Revert des Workflow-Diffs (ein Commit); keine Datenmigration.
 
-- 100 % neue Tickets enthalten Refinement-Review, bevor sie umgesetzt werden.
-- Operator-Zeit für Ticket-Rework <10 %.
-- ≥80 % Tickets bestehen Refinement ohne Nachbearbeitung.
+## Hinweise
+- Branch-Konvention: `feature/AT-PATCH-12-<kurz>`.  
+- Ergänze in der PR-Beschreibung: „Prettier Auto-Fix aktiv, Guardrail = 1 Commit, Same-Repo-Guard an.“
