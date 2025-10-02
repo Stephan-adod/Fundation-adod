@@ -1,16 +1,7 @@
 name: auto-format
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - '**/*.md'
-      - '**/*.json'
-      - '**/*.yml'
-      - '**/*.yaml'
-      - 'scripts/**'
-      - '.prettierignore'
-      - '.editorconfig'
+  workflow_dispatch: {}
 
 concurrency:
   group: auto-format-${{ github.ref }}
