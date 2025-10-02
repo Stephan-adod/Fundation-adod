@@ -20,6 +20,7 @@ permissions:
 
 env:
   SHADOW_MODE: true
+  MAX_AUTOFIX_COMMITS: 1
 
 jobs:
   run-checks:
@@ -41,8 +42,20 @@ jobs:
         continue-on-error: true
         run: npx --yes prettier --check .
 
+      - name: Count previous bot commits
+        id: count
+        shell: bash
+        run: |
+          COUNT=$( {
+            git log --pretty='%an\t%s' 2>/dev/null || true
+          } | awk -F'\t' '$1 == "github-actions[bot]" && $2 == "chore(prettier): auto-format via CI" {c++} END {print c+0}')
+          echo "n=${COUNT:-0}" >> "$GITHUB_OUTPUT"
+
       - name: Prettier (write & commit)
-        if: steps.prettier.outcome == 'failure'
+        if: |
+          steps.prettier.outcome == 'failure' &&
+          steps.count.outputs.n < env.MAX_AUTOFIX_COMMITS &&
+          github.event.pull_request.head.repo.full_name == github.repository
         run: |
           npx --yes prettier --write .
           git config user.name  "github-actions[bot]"
